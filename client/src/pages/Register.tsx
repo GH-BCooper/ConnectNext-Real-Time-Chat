@@ -9,7 +9,7 @@ export default function Register() {
   });
 
   const submit = async () => {
-    const res = await api.post("/auth/register", form);
+    await api.post("/auth/register", form);
     window.location.href = "/dashboard";
   };
 

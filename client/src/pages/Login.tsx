@@ -8,7 +8,7 @@ export default function Login() {
   });
 
   const submit = async () => {
-    const res = await api.post("/auth/login", form);
+    await api.post("/auth/login", form);
     window.location.href = "/dashboard";
   };
 
