@@ -20,8 +20,7 @@ const server = createServer(app);
 // 🔥 Attach socket.io
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL,
-    // origin: "http://localhost:5173",
+    origin: ["http://localhost:5173", process.env.CLIENT_URL],
     credentials: true,
   },
 });
@@ -32,7 +31,7 @@ app.use(express.json());
 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL,
+    origin: ["http://localhost:5173", process.env.CLIENT_URL],
     credentials: true,
   }),
 );
@@ -43,9 +42,9 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: false,
+      secure: true,
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: "none",
     },
   }),
 );
