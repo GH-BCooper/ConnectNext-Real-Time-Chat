@@ -1,11 +1,15 @@
 import express from "express";
 import pool from "../db.js";
 
+// Express Router Initialization
 const router = express.Router();
 
+// Fetch Messages By Room ID
 router.get("/:roomId", async (req, res) => {
+  // Request Parameters
   const { roomId } = req.params;
 
+  // Database Query
   const result = await pool.query(
     `SELECT m.content, u.username
    FROM messages m
@@ -15,7 +19,9 @@ router.get("/:roomId", async (req, res) => {
     [roomId],
   );
 
+  // API Response
   res.json(result.rows);
 });
 
+// Export Router
 export default router;

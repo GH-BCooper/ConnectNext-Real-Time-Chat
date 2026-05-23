@@ -1,15 +1,19 @@
 import { useEffect, useState } from "react";
 import api from "../api/axios";
 
+// Dashboard Component
 export default function Dashboard() {
+  // State Management
   const [user, setUser] = useState<any>(null);
   const [rooms, setRooms] = useState<any[]>([]);
 
+  // Initial Data Fetch
   useEffect(() => {
     fetchUser();
     fetchRooms();
   }, []);
 
+  // Fetch Logged In User
   const fetchUser = async () => {
     try {
       const res = await api.get("/auth/me");
@@ -19,19 +23,22 @@ export default function Dashboard() {
     }
   };
 
+  // Fetch Available Chat Rooms
   const fetchRooms = async () => {
     const res = await api.get("/rooms");
     setRooms(res.data);
   };
 
+  // Logout Handler
   const logout = async () => {
     await api.post("/auth/logout");
     window.location.href = "/";
   };
 
+  // UI Rendering
   return (
     <div style={{ display: "flex", height: "100vh" }}>
-      {/* Sidebar */}
+      {/* Sidebar Layout */}
       <div
         style={{
           width: "250px",
@@ -41,10 +48,13 @@ export default function Dashboard() {
       >
         <h2>ConnectNext</h2>
 
+        {/* User Information */}
         {user && <p>{user.username}</p>}
 
+        {/* Logout Button */}
         <button onClick={logout}>Logout</button>
 
+        {/* Room List */}
         <h3>Rooms</h3>
 
         {rooms.map((room) => (
@@ -58,7 +68,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Main Area */}
+      {/* Main Dashboard Area */}
       <div
         style={{
           flex: 1,

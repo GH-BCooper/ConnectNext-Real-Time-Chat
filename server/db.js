@@ -1,10 +1,12 @@
 import pg from "pg";
 import dotenv from "dotenv";
 
+// Environment Variable Configuration
 dotenv.config();
 
 const { Pool } = pg;
 
+// PostgreSQL Connection Pool Configuration
 // For production, use the DATABASE_URL environment variable
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -22,4 +24,5 @@ const pool = new Pool({
 //   database: process.env.DB_NAME
 // });
 
+// Export Database Pool
 export default pool;

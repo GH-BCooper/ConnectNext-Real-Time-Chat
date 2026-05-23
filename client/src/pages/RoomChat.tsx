@@ -3,17 +3,24 @@ import { useSearchParams } from "react-router-dom";
 import socket from "../socket/socket";
 import api from "../api/axios";
 
+// Room Chat Component
 export default function RoomChat() {
+  // URL Parameters
   const [searchParams] = useSearchParams();
   const roomId = searchParams.get("roomId");
+
+  // State Management
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
   const [typingUser, setTypingUser] = useState("");
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
-  const bottomRef = useRef<HTMLDivElement | null>(null);
   const [roomName, setRoomName] = useState("");
 
+  // Refs
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  // Fetch Room Name
   useEffect(() => {
     if (!roomId) return;
 
@@ -26,53 +33,59 @@ export default function RoomChat() {
     fetchRoomName();
   }, [roomId]);
 
+  // Auto Scroll To Latest Message
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // 🔥 Get logged-in user
+  // Fetch Logged In User
   useEffect(() => {
     const fetchUser = async () => {
       const res = await api.get("/auth/me");
       setUser(res.data);
     };
+
     fetchUser();
   }, []);
 
-  // 🔥 Join room + listen
+  // Socket Room Join And Event Listeners
   useEffect(() => {
     if (!roomId || !user) return;
 
-    // 🔥 JOIN ROOM
+    // Join Chat Room
     socket.emit("joinRoom", {
       roomId,
       username: user.username,
     });
 
-    // 🔥 LISTENERS
+    // Receive Incoming Messages
     const handleReceiveMessage = (data: any) => {
       setMessages((prev) => [...prev, data]);
     };
 
+    // Typing Indicator Handler
     const handleTyping = (data: any) => {
       setTypingUser(data.username);
       setTimeout(() => setTypingUser(""), 1000);
     };
 
+    // System Message Handler
     const handleSystem = (data: any) => {
       setMessages((prev) => [...prev, data]);
     };
 
+    // Online Users Handler
     const handleUsers = (users: string[]) => {
       setOnlineUsers(users);
     };
 
+    // Socket Event Listeners
     socket.on("receiveMessage", handleReceiveMessage);
     socket.on("typing", handleTyping);
     socket.on("systemMessage", handleSystem);
     socket.on("roomUsers", handleUsers);
 
-    // 🔥 CLEANUP (VERY IMPORTANT)
+    // Cleanup Socket Listeners
     return () => {
       socket.off("receiveMessage", handleReceiveMessage);
       socket.off("typing", handleTyping);
@@ -80,7 +93,8 @@ export default function RoomChat() {
       socket.off("roomUsers", handleUsers);
     };
   }, [roomId, user]);
-  // 🔥 Load old messages
+
+  // Fetch Previous Messages
   useEffect(() => {
     if (!roomId) return;
 
@@ -92,6 +106,7 @@ export default function RoomChat() {
     fetchMessages();
   }, [roomId]);
 
+  // Send Message Handler
   const sendMessage = () => {
     if (!message.trim()) return;
 
@@ -104,6 +119,7 @@ export default function RoomChat() {
     setMessage("");
   };
 
+  // UI Rendering
   return (
     <div
       style={{
@@ -113,7 +129,7 @@ export default function RoomChat() {
         color: "white",
       }}
     >
-      {/* LEFT - CHAT */}
+      {/* Chat Section */}
       <div
         style={{
           flex: 3,
@@ -122,9 +138,10 @@ export default function RoomChat() {
           padding: "20px",
         }}
       >
+        {/* Room Title */}
         <h2 style={{ marginBottom: "10px" }}>{roomName || "Chat Room"}</h2>
 
-        {/* MESSAGES */}
+        {/* Messages Container */}
         <div
           style={{
             flex: 1,
@@ -146,6 +163,7 @@ export default function RoomChat() {
                   marginBottom: "8px",
                 }}
               >
+                {/* Individual Message Bubble */}
                 <div
                   style={{
                     maxWidth: "60%",
@@ -154,14 +172,17 @@ export default function RoomChat() {
                     background: isMe ? "#2563eb" : "#1e293b",
                   }}
                 >
+                  {/* Message Sender */}
                   <strong style={{ fontSize: "12px" }}>
                     {msg.username === user?.username
                       ? "You"
                       : msg.username || "System"}
                   </strong>
 
+                  {/* Message Content */}
                   <div>{msg.message || msg.content}</div>
 
+                  {/* Message Timestamp */}
                   {msg.time && (
                     <div style={{ fontSize: "10px", opacity: 0.6 }}>
                       {msg.time}
@@ -172,17 +193,18 @@ export default function RoomChat() {
             );
           })}
 
+          {/* Auto Scroll Reference */}
           <div ref={bottomRef}></div>
         </div>
 
-        {/* TYPING */}
+        {/* Typing Indicator */}
         {typingUser && typingUser !== user?.username && (
           <p style={{ fontSize: "12px", marginTop: "5px" }}>
             {typingUser} is typing...
           </p>
         )}
 
-        {/* INPUT */}
+        {/* Message Input Section */}
         <div
           style={{
             display: "flex",
@@ -190,6 +212,7 @@ export default function RoomChat() {
             marginTop: "10px",
           }}
         >
+          {/* Message Input Field */}
           <input
             style={{
               flex: 1,
@@ -216,6 +239,7 @@ export default function RoomChat() {
             }}
           />
 
+          {/* Send Message Button */}
           <button
             style={{
               padding: "10px 15px",
@@ -232,7 +256,7 @@ export default function RoomChat() {
         </div>
       </div>
 
-      {/* RIGHT - USERS */}
+      {/* Online Users Section */}
       <div
         style={{
           flex: 1,
@@ -243,6 +267,7 @@ export default function RoomChat() {
       >
         <h3>Online Users</h3>
 
+        {/* Online Users List */}
         {onlineUsers.map((u, i) => (
           <div key={i} style={{ marginTop: "10px" }}>
             {u === user?.username ? "🟢 You" : u}
