@@ -5,7 +5,7 @@ import dotenv from "dotenv";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import pool from "./db.js";
-
+import pgSession from "connect-pg-simple";
 import authRoutes from "./routes/authRoutes.js";
 import roomRoutes from "./routes/roomRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
@@ -49,8 +49,15 @@ app.use(
   }),
 );
 
+// TO:
+const PgStore = pgSession(session);
+
 app.use(
   session({
+    store: new PgStore({
+      pool,
+      tableName: "session",
+    }),
     secret: process.env.SESSION_SECRET || "dev-secret-key",
     resave: false,
     saveUninitialized: false,
@@ -58,9 +65,22 @@ app.use(
       secure: process.env.NODE_ENV === "production",
       httpOnly: true,
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 1000 * 60 * 60 * 24,
     },
   }),
 );
+// app.use(
+//   session({
+//     secret: process.env.SESSION_SECRET || "dev-secret-key",
+//     resave: false,
+//     saveUninitialized: false,
+//     cookie: {
+//       secure: process.env.NODE_ENV === "production",
+//       httpOnly: true,
+//       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+//     },
+//   }),
+// );
 
 // API Routes
 app.use("/auth", authRoutes);
