@@ -52,10 +52,10 @@ export default function Login() {
     try {
       const response = await api.post("/auth/login", form);
       if (response.status === 200) {
+        localStorage.setItem("token", response.data.token); // ← add this
         navigate("/dashboard");
       }
     } catch (err: any) {
-      // Error Handling
       const errorMessage =
         err.response?.data?.message ||
         err.response?.data?.error ||
@@ -65,6 +65,23 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
+
+    // try {
+    //   const response = await api.post("/auth/login", form);
+    //   if (response.status === 200) {
+    //     navigate("/dashboard");
+    //   }
+    // } catch (err: any) {
+    //   // Error Handling
+    //   const errorMessage =
+    //     err.response?.data?.message ||
+    //     err.response?.data?.error ||
+    //     err.message ||
+    //     "Login failed";
+    //   setError(errorMessage);
+    // } finally {
+    //   setLoading(false);
+    // }
   };
 
   // UI Rendering
