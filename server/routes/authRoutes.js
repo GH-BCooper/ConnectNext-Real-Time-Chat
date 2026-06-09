@@ -27,9 +27,14 @@ router.post("/register", async (req, res) => {
     // Registration Success Response
     res.json({ message: "Registered successfully", user: result.rows[0] });
   } catch (err) {
-    // Error Handling
     console.error(err);
-    res.status(500).json(err.message);
+
+    // Handle duplicate email (PostgreSQL unique constraint violation)
+    if (err.code === "23505") {
+      return res.status(400).json({ message: "Email already in use" });
+    }
+
+    res.status(500).json({ message: "Registration failed" });
   }
 });
 
