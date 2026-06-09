@@ -27,6 +27,18 @@ const io = new Server(server, {
   },
 });
 
+// Socket.IO Middleware for Authentication
+io.use((socket, next) => {
+  // Check if user is authenticated via session
+  if (socket.handshake.headers.cookie) {
+    // Session exists, user is authenticated
+    next();
+  } else {
+    // No session, reject connection
+    next(new Error("Authentication required"));
+  }
+});
+
 // Middleware Configuration
 app.use(express.json());
 
@@ -39,13 +51,13 @@ app.use(
 
 app.use(
   session({
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || "dev-secret-key",
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       httpOnly: true,
-      sameSite: "none",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     },
   }),
 );

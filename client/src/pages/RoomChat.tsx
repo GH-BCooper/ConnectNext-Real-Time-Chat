@@ -1,10 +1,13 @@
 import { useEffect, useState, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import socket from "../socket/socket";
 import api from "../api/axios";
 
 // Room Chat Component
 export default function RoomChat() {
+  // Navigation Hook
+  const navigate = useNavigate();
+
   // URL Parameters
   const [searchParams] = useSearchParams();
   const roomId = searchParams.get("roomId");
@@ -16,18 +19,40 @@ export default function RoomChat() {
   const [typingUser, setTypingUser] = useState("");
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [roomName, setRoomName] = useState("");
+  const [loading, setLoading] = useState(true);
 
   // Refs
   const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  // Check Authentication and Fetch User
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await api.get("/auth/me");
+        setUser(res.data);
+      } catch {
+        // Not logged in, redirect to login
+        navigate("/");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, [navigate]);
 
   // Fetch Room Name
   useEffect(() => {
     if (!roomId) return;
 
     const fetchRoomName = async () => {
-      const res = await api.get("/rooms");
-      const room = res.data.find((r: any) => r.id == roomId);
-      setRoomName(room?.name || "Chat Room");
+      try {
+        const res = await api.get("/rooms");
+        const room = res.data.find((r: any) => r.id == roomId);
+        setRoomName(room?.name || "Chat Room");
+      } catch (error) {
+        console.error("Error fetching room name:", error);
+      }
     };
 
     fetchRoomName();
@@ -37,16 +62,6 @@ export default function RoomChat() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  // Fetch Logged In User
-  useEffect(() => {
-    const fetchUser = async () => {
-      const res = await api.get("/auth/me");
-      setUser(res.data);
-    };
-
-    fetchUser();
-  }, []);
 
   // Socket Room Join And Event Listeners
   useEffect(() => {
@@ -99,8 +114,12 @@ export default function RoomChat() {
     if (!roomId) return;
 
     const fetchMessages = async () => {
-      const res = await api.get(`/messages/${roomId}`);
-      setMessages(res.data);
+      try {
+        const res = await api.get(`/messages/${roomId}`);
+        setMessages(res.data);
+      } catch (error) {
+        console.error("Error fetching messages:", error);
+      }
     };
 
     fetchMessages();
@@ -119,161 +138,244 @@ export default function RoomChat() {
     setMessage("");
   };
 
+  // Exit Room Handler
+  const exitRoom = () => {
+    socket.emit("leaveRoom", { roomId, username: user?.username });
+    navigate("/dashboard");
+  };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100vh",
+          background: "#0f172a",
+          color: "white",
+        }}
+      >
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
   // UI Rendering
   return (
     <div
       style={{
         display: "flex",
+        flexDirection: "column",
         height: "100vh",
         background: "#0f172a",
         color: "white",
       }}
     >
-      {/* Chat Section */}
+      {/* Header */}
       <div
         style={{
-          flex: 3,
+          padding: "15px 20px",
+          borderBottom: "1px solid #334155",
           display: "flex",
-          flexDirection: "column",
-          padding: "20px",
+          justifyContent: "space-between",
+          alignItems: "center",
+          background: "#1e293b",
         }}
       >
-        {/* Room Title */}
-        <h2 style={{ marginBottom: "10px" }}>{roomName || "Chat Room"}</h2>
+        <h2 style={{ margin: 0 }}>{roomName || "Chat Room"}</h2>
+        <button
+          onClick={exitRoom}
+          style={{
+            padding: "8px 16px",
+            background: "#dc2626",
+            border: "none",
+            borderRadius: "6px",
+            color: "white",
+            cursor: "pointer",
+            fontWeight: "bold",
+          }}
+        >
+          Exit Room
+        </button>
+      </div>
 
-        {/* Messages Container */}
+      {/* Main Chat Area */}
+      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        {/* Chat Section */}
+        <div
+          style={{
+            flex: 3,
+            display: "flex",
+            flexDirection: "column",
+            padding: "20px",
+          }}
+        >
+          {/* Messages Container */}
+          <div
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              padding: "10px",
+              borderRadius: "8px",
+              background: "#020617",
+              marginBottom: "10px",
+            }}
+          >
+            {messages.map((msg, i) => {
+              const isMe = msg.username === user?.username;
+
+              return (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    justifyContent: isMe ? "flex-end" : "flex-start",
+                    marginBottom: "8px",
+                  }}
+                >
+                  {/* Individual Message Bubble */}
+                  <div
+                    style={{
+                      maxWidth: "60%",
+                      padding: "10px",
+                      borderRadius: "10px",
+                      background: isMe ? "#2563eb" : "#1e293b",
+                    }}
+                  >
+                    {/* Message Sender */}
+                    <strong style={{ fontSize: "12px" }}>
+                      {msg.username === user?.username
+                        ? "You"
+                        : msg.username || "System"}
+                    </strong>
+
+                    {/* Message Content */}
+                    <div>{msg.message || msg.content}</div>
+
+                    {/* Message Timestamp */}
+                    {msg.time && (
+                      <div style={{ fontSize: "10px", opacity: 0.6 }}>
+                        {msg.time}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Auto Scroll Reference */}
+            <div ref={bottomRef}></div>
+          </div>
+
+          {/* Typing Indicator */}
+          {typingUser && typingUser !== user?.username && (
+            <p style={{ fontSize: "12px", marginBottom: "10px" }}>
+              {typingUser} is typing...
+            </p>
+          )}
+
+          {/* Message Input Section */}
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+            }}
+          >
+            {/* Message Input Field */}
+            <input
+              style={{
+                flex: 1,
+                padding: "10px",
+                borderRadius: "6px",
+                border: "1px solid #334155",
+                background: "#1e293b",
+                color: "white",
+                outline: "none",
+              }}
+              value={message}
+              onChange={(e) => {
+                setMessage(e.target.value);
+
+                if (user?.username) {
+                  socket.emit("typing", {
+                    roomId,
+                    username: user.username,
+                  });
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  sendMessage();
+                }
+              }}
+              placeholder="Type a message..."
+            />
+
+            {/* Send Message Button */}
+            <button
+              style={{
+                padding: "10px 15px",
+                background: "#2563eb",
+                border: "none",
+                borderRadius: "6px",
+                color: "white",
+                cursor: "pointer",
+                fontWeight: "bold",
+              }}
+              onClick={sendMessage}
+            >
+              Send
+            </button>
+          </div>
+        </div>
+
+        {/* Online Users Section */}
         <div
           style={{
             flex: 1,
-            overflowY: "auto",
-            padding: "10px",
-            borderRadius: "8px",
+            padding: "20px",
+            borderLeft: "1px solid #1e293b",
             background: "#020617",
+            overflowY: "auto",
           }}
         >
-          {messages.map((msg, i) => {
-            const isMe = msg.username === user?.username;
+          <h3 style={{ marginTop: 0 }}>Online Users ({onlineUsers.length})</h3>
 
-            return (
-              <div
-                key={i}
-                style={{
-                  display: "flex",
-                  justifyContent: isMe ? "flex-end" : "flex-start",
-                  marginBottom: "8px",
-                }}
-              >
-                {/* Individual Message Bubble */}
-                <div
-                  style={{
-                    maxWidth: "60%",
-                    padding: "10px",
-                    borderRadius: "10px",
-                    background: isMe ? "#2563eb" : "#1e293b",
-                  }}
-                >
-                  {/* Message Sender */}
-                  <strong style={{ fontSize: "12px" }}>
-                    {msg.username === user?.username
-                      ? "You"
-                      : msg.username || "System"}
-                  </strong>
-
-                  {/* Message Content */}
-                  <div>{msg.message || msg.content}</div>
-
-                  {/* Message Timestamp */}
-                  {msg.time && (
-                    <div style={{ fontSize: "10px", opacity: 0.6 }}>
-                      {msg.time}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Auto Scroll Reference */}
-          <div ref={bottomRef}></div>
-        </div>
-
-        {/* Typing Indicator */}
-        {typingUser && typingUser !== user?.username && (
-          <p style={{ fontSize: "12px", marginTop: "5px" }}>
-            {typingUser} is typing...
-          </p>
-        )}
-
-        {/* Message Input Section */}
-        <div
-          style={{
-            display: "flex",
-            gap: "10px",
-            marginTop: "10px",
-          }}
-        >
-          {/* Message Input Field */}
-          <input
-            style={{
-              flex: 1,
-              padding: "10px",
-              borderRadius: "6px",
-              border: "none",
-              outline: "none",
-            }}
-            value={message}
-            onChange={(e) => {
-              setMessage(e.target.value);
-
-              if (user?.username) {
-                socket.emit("typing", {
-                  roomId,
-                  username: user.username,
-                });
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                sendMessage();
-              }
-            }}
-          />
-
-          {/* Send Message Button */}
-          <button
-            style={{
-              padding: "10px 15px",
-              background: "#2563eb",
-              border: "none",
-              borderRadius: "6px",
-              color: "white",
-              cursor: "pointer",
-            }}
-            onClick={sendMessage}
-          >
-            Send
-          </button>
+          {/* Online Users List */}
+          {onlineUsers.map((u, i) => (
+            <div
+              key={i}
+              style={{
+                marginTop: "10px",
+                padding: "10px",
+                background: "#1e293b",
+                borderRadius: "6px",
+              }}
+            >
+              <span style={{ marginRight: "8px" }}>
+                {u === user?.username ? "🟢" : "⚪"}
+              </span>
+              {u === user?.username ? "You" : u}
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Online Users Section */}
-      <div
+      {/* Footer with Copyright */}
+      <footer
         style={{
-          flex: 1,
-          padding: "20px",
-          borderLeft: "1px solid #1e293b",
-          background: "#020617",
+          padding: "15px 20px",
+          textAlign: "center",
+          borderTop: "1px solid #334155",
+          color: "#64748b",
+          fontSize: "12px",
+          background: "#1e293b",
         }}
       >
-        <h3>Online Users</h3>
-
-        {/* Online Users List */}
-        {onlineUsers.map((u, i) => (
-          <div key={i} style={{ marginTop: "10px" }}>
-            {u === user?.username ? "🟢 You" : u}
-          </div>
-        ))}
-      </div>
+        © 2026 Made by Brett Cooper
+      </footer>
     </div>
   );
 }
