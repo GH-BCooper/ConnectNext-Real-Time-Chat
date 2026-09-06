@@ -60,7 +60,7 @@ export default function Dashboard() {
       <NavBar username={user?.username} />
 
       <div className="cn-container">
-        <h1 style={{ margin: "0 0 4px", fontSize: 30 }}>
+        <h1 className="cn-h1" style={{ fontSize: "clamp(1.5rem, 6vw, 1.875rem)" }}>
           Welcome back, <span className="cn-grad-text">{user?.username}</span> 🚀
         </h1>
         <p style={{ margin: "0 0 24px", color: "var(--text-dim)" }}>
@@ -68,31 +68,18 @@ export default function Dashboard() {
           <a href="/assistant">AI Tutor</a> what your group has been covering.
         </p>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 1fr) 300px",
-            gap: 24,
-            alignItems: "start",
-          }}
-        >
+        <div className="cn-split">
           {/* Rooms grid */}
-          <div>
+          <div style={{ minWidth: 0 }}>
             <h2 style={{ fontSize: 18, margin: "0 0 12px" }}>
               Study rooms <span style={{ color: "var(--text-faint)" }}>({rooms.length})</span>
             </h2>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-                gap: 12,
-              }}
-            >
+            <div className="cn-grid">
               {rooms.map((room) => (
                 <button
                   key={room.id}
                   onClick={() => navigate(`/chat?roomId=${room.id}`)}
-                  className="cn-card"
+                  className="cn-card cn-bubble"
                   style={{
                     textAlign: "left",
                     padding: 16,
@@ -123,7 +110,7 @@ export default function Dashboard() {
           </div>
 
           {/* Create room */}
-          <div className="cn-card">
+          <div className="cn-card cn-split__aside">
             <h2 style={{ fontSize: 16, margin: "0 0 12px" }}>✨ New study room</h2>
             {createError && (
               <p style={{ color: "#fca5a5", fontSize: 12, margin: "0 0 8px" }}>

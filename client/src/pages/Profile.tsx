@@ -36,7 +36,7 @@ export default function Profile() {
       <NavBar username={user?.username} />
 
       <div className="cn-container" style={{ maxWidth: 520 }}>
-        <h1 style={{ margin: "0 0 20px", fontSize: 28 }}>
+        <h1 style={{ margin: "0 0 20px", fontSize: "clamp(1.4rem, 5.5vw, 1.75rem)" }}>
           <span className="cn-grad-text">My Profile</span> 👤
         </h1>
 
@@ -67,12 +67,15 @@ function Row({ label, value }: { label: string; value: string }) {
       style={{
         display: "flex",
         justifyContent: "space-between",
+        gap: 12,
         padding: "10px 0",
         borderBottom: "1px solid var(--border)",
       }}
     >
-      <span style={{ color: "var(--text-dim)" }}>{label}</span>
-      <span style={{ fontWeight: 700 }}>{value}</span>
+      <span style={{ color: "var(--text-dim)", flexShrink: 0 }}>{label}</span>
+      <span style={{ fontWeight: 700, textAlign: "right", overflowWrap: "anywhere", minWidth: 0 }}>
+        {value}
+      </span>
     </div>
   );
 }

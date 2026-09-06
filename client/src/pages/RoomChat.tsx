@@ -145,7 +145,7 @@ export default function RoomChat() {
     runAI(
       "vibe",
       `/ai/vibe/${roomId}`,
-      "🎭 Room Vibe Check",
+      "🎯 Focus Check",
       (d) =>
         `${d.emoji}  ${d.mood}\n\nFocus: ${"🔥".repeat(d.energy)}${"·".repeat(5 - d.energy)}\n\n${d.note}`,
     );
@@ -177,22 +177,11 @@ export default function RoomChat() {
     : messages;
 
   return (
-    <div className="cn-page" style={{ height: "100vh" }}>
+    <div className="cn-page cn-page--app">
       {/* Header */}
-      <div
-        style={{
-          padding: "12px 20px",
-          borderBottom: "1px solid var(--border)",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          background: "rgba(15,23,42,0.7)",
-          flexWrap: "wrap",
-          gap: 10,
-        }}
-      >
-        <h2 style={{ margin: 0, fontSize: 18 }}># {roomName || "Study Room"}</h2>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div className="cn-room-head">
+        <h2 className="cn-room-head__title"># {roomName || "Study Room"}</h2>
+        <div className="cn-toolbar">
           <button onClick={quizMe} disabled={busy !== ""} style={{ background: "var(--cyan)" }}>
             {busy === "quiz" ? "Building…" : "❓ Quiz Me"}
           </button>
@@ -205,23 +194,25 @@ export default function RoomChat() {
           <button onClick={vibeCheck} disabled={busy !== ""} style={{ background: "var(--pink)" }}>
             {busy === "vibe" ? "Reading…" : "🎯 Focus"}
           </button>
-          <button onClick={exitRoom} style={{ background: "var(--red)" }}>
-            Exit
-          </button>
         </div>
+        <button onClick={exitRoom} className="cn-exit" style={{ background: "var(--red)" }}>
+          Exit
+        </button>
       </div>
 
       {quiz && <QuizModal questions={quiz} onClose={() => setQuiz(null)} />}
 
       {modal && (
-        <div style={overlay} onClick={() => setModal(null)}>
+        <div className="cn-modal-overlay" onClick={() => setModal(null)}>
           <div
             onClick={(e) => e.stopPropagation()}
-            className="cn-card"
-            style={{ maxWidth: 500, width: "90%", maxHeight: "70vh", overflowY: "auto", borderColor: "var(--brand-2)" }}
+            className="cn-card cn-modal"
+            style={{ maxWidth: 500, borderColor: "var(--brand-2)" }}
           >
             <h3 style={{ marginTop: 0, color: "var(--brand-2)" }}>{modal.title}</h3>
-            <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{modal.body}</div>
+            <div className="cn-bubble" style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
+              {modal.body}
+            </div>
             <button onClick={() => setModal(null)} style={{ marginTop: 16, background: "var(--bg-3)" }}>
               Close
             </button>
@@ -230,26 +221,16 @@ export default function RoomChat() {
       )}
 
       {/* Main */}
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        <div style={{ flex: 3, display: "flex", flexDirection: "column", padding: 16 }}>
+      <div className="cn-room">
+        <div className="cn-room__main">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="🔍 Search messages in this room"
-            style={{ marginBottom: 10 }}
+            style={{ marginBottom: 10, width: "100%" }}
           />
 
-          <div
-            style={{
-              flex: 1,
-              overflowY: "auto",
-              padding: 12,
-              borderRadius: 10,
-              background: "var(--bg-1)",
-              border: "1px solid var(--border)",
-              marginBottom: 10,
-            }}
-          >
+          <div className="cn-room__messages">
             {shown.length === 0 && (
               <p style={{ color: "var(--text-faint)", fontSize: 13 }}>
                 {q ? "No messages match your search." : "No messages yet — say hi!"}
@@ -272,19 +253,28 @@ export default function RoomChat() {
                   }}
                 >
                   <div
+                    className="cn-bubble"
                     style={{
-                      maxWidth: "70%",
+                      maxWidth: "78%",
                       padding: "9px 12px",
                       borderRadius: 12,
                       background: isAI ? "#3b0764" : isMe ? "var(--brand)" : "var(--bg-2)",
                       border: isAI ? "1px solid var(--brand-2)" : "1px solid var(--border)",
                     }}
                   >
-                    <strong style={{ fontSize: 11, opacity: 0.85 }}>
+                    <strong
+                      style={{
+                        fontSize: 11,
+                        opacity: 0.85,
+                        display: "block",
+                        lineHeight: 1.3,
+                        marginBottom: 2,
+                      }}
+                    >
                       {isAI ? "✨ AI Assistant" : isMe ? "You" : msg.username || "System"}
                     </strong>
-                    <div style={{ fontSize: 14 }}>{msg.message || msg.content}</div>
-                    {time && <div style={{ fontSize: 10, opacity: 0.6 }}>{time}</div>}
+                    <div style={{ fontSize: 14, lineHeight: 1.45 }}>{msg.message || msg.content}</div>
+                    {time && <div style={{ fontSize: 10, opacity: 0.6, marginTop: 3 }}>{time}</div>}
                   </div>
                 </div>
               );
@@ -297,21 +287,20 @@ export default function RoomChat() {
           </div>
 
           {typingUser && typingUser !== user?.username && (
-            <p style={{ fontSize: 12, marginBottom: 8, color: "var(--text-dim)" }}>
+            <p style={{ fontSize: 12, margin: "0 0 8px", color: "var(--text-dim)" }}>
               {typingUser} is typing…
             </p>
           )}
 
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="cn-composer">
             <input
-              style={{ flex: 1 }}
               value={message}
               onChange={(e) => {
                 setMessage(e.target.value);
                 if (user?.username) socket.emit("typing", { roomId, username: user.username });
               }}
               onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-              placeholder="Ask the group something… (try /ai <question> for the tutor)"
+              placeholder="Ask the group… (try /ai <question>)"
             />
             <button
               onClick={polish}
@@ -319,53 +308,25 @@ export default function RoomChat() {
               title="Rewrite my message with AI"
               style={{ background: "var(--brand-2)" }}
             >
-              {polishing ? "…" : "✨ Polish"}
+              {polishing ? "…" : "✨"}
             </button>
             <button onClick={sendMessage}>Send</button>
           </div>
         </div>
 
         {/* Online users */}
-        <div
-          style={{
-            flex: 1,
-            minWidth: 180,
-            padding: 16,
-            borderLeft: "1px solid var(--border)",
-            background: "var(--bg-1)",
-            overflowY: "auto",
-          }}
-        >
-          <h3 style={{ marginTop: 0, fontSize: 15 }}>Online ({onlineUsers.length})</h3>
-          {onlineUsers.map((u, i) => (
-            <div
-              key={i}
-              style={{
-                marginTop: 8,
-                padding: 9,
-                background: "var(--bg-2)",
-                borderRadius: 8,
-                fontSize: 13,
-              }}
-            >
-              <span style={{ marginRight: 8 }}>{u === user?.username ? "🟢" : "⚪"}</span>
-              {u === user?.username ? "You" : u}
-            </div>
-          ))}
+        <div className="cn-room__aside">
+          <h3 className="cn-room__aside-title">Online ({onlineUsers.length})</h3>
+          <div className="cn-room__users">
+            {onlineUsers.map((u, i) => (
+              <div key={i} className="cn-room__user">
+                <span style={{ marginRight: 8 }}>{u === user?.username ? "🟢" : "⚪"}</span>
+                {u === user?.username ? "You" : u}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-
-      <footer className="cn-footer">© 2026 Made by Brett Cooper</footer>
     </div>
   );
 }
-
-const overlay = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(0,0,0,0.6)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  zIndex: 100,
-} as const;

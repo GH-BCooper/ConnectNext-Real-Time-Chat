@@ -22,57 +22,27 @@ export default function NavBar({ username }: { username?: string }) {
   };
 
   return (
-    <header
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 16,
-        padding: "12px 20px",
-        borderBottom: "1px solid var(--border)",
-        background: "rgba(15,23,42,0.7)",
-        backdropFilter: "blur(8px)",
-        position: "sticky",
-        top: 0,
-        zIndex: 20,
-        flexWrap: "wrap",
-      }}
-    >
-      <span
-        className="cn-grad-text"
-        style={{ fontWeight: 800, fontSize: 18, letterSpacing: "-0.5px" }}
-      >
-        ConnectNext
-      </span>
+    <header className="cn-nav">
+      <span className="cn-grad-text cn-nav__brand">ConnectNext</span>
 
-      <nav style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+      <nav className="cn-nav__links" aria-label="Primary">
         {links.map((l) => (
           <NavLink
             key={l.to}
             to={l.to}
-            style={({ isActive }) => ({
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "6px 12px",
-              borderRadius: 999,
-              fontSize: 13,
-              fontWeight: 600,
-              textDecoration: "none",
-              color: isActive ? "white" : "var(--text-dim)",
-              background: isActive ? "var(--brand)" : "transparent",
-              border: "1px solid",
-              borderColor: isActive ? "transparent" : "var(--border)",
-            })}
+            className={({ isActive }) =>
+              "cn-nav__link" + (isActive ? " active" : "")
+            }
           >
-            <span>{l.icon}</span>
+            <span aria-hidden>{l.icon}</span>
             {l.label}
           </NavLink>
         ))}
       </nav>
 
-      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
+      <div className="cn-nav__right">
         {username && (
-          <span style={{ fontSize: 13, color: "var(--text-dim)" }}>
+          <span className="cn-nav__hi">
             Hi, <strong style={{ color: "var(--text)" }}>{username}</strong>
           </span>
         )}

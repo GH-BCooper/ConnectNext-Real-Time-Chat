@@ -8,7 +8,7 @@ with **Claude** woven through it.
 
 Built as a learning project. **© 2026 Made by Brett Cooper**
 
-Version history: [v2](versionTwo.md) · [v3](versionThree.md) · [v4](versionFour.md) · [**v5**](versionFive.md)
+Version history: [v2](versionTwo.md) · [v3](versionThree.md) · [v4](versionFour.md) · [v5](versionFive.md) · [**v6**](versionSix.md)
 
 ---
 
@@ -46,8 +46,8 @@ DB_NAME=connectnext
 CLIENT_URL=http://localhost:5173
 SESSION_SECRET=connectnextsecret-local-dev
 NODE_ENV=development
-ANTHROPIC_API_KEY=        # optional — needed only for the AI features
-AI_MODEL=claude-sonnet-5 # optional override (opus-5 for deeper answers)
+GROQ_API_KEY=               # optional — needed only for the AI features
+AI_MODEL=openai/gpt-oss-120b   # optional override (openai/gpt-oss-20b is faster)
 ```
 
 `client/.env`:
@@ -56,14 +56,25 @@ AI_MODEL=claude-sonnet-5 # optional override (opus-5 for deeper answers)
 VITE_API_URL=http://localhost:5000
 ```
 
-Without `ANTHROPIC_API_KEY` the app works normally; AI buttons just show a friendly "AI is off" message.
+The AI features run on **Groq** (OpenAI-compatible chat completions). Get a free
+key at <https://console.groq.com/keys>. Without `GROQ_API_KEY` the app works
+normally; AI buttons just show a friendly "AI is off" message.
+
+### End-to-end test
+
+```bash
+cd client && node e2e-test.mjs   # servers must be running
+```
+
+Covers auth, rooms, messages, search, stats, every AI endpoint and the real-time
+Socket.IO layer (including the in-room `/ai` trigger).
 
 ---
 
 ## Tech stack
 
-**Client:** React 19, TypeScript, React Router, Axios, Socket.IO client, Vite
-**Server:** Node.js, Express, Socket.IO, PostgreSQL (`pg`), bcrypt, express-session + connect-pg-simple, `@anthropic-ai/sdk`
+**Client:** React 19, TypeScript, React Router, Axios, Socket.IO client, Vite — fully responsive, mobile-first (no horizontal overflow down to 320px)
+**Server:** Node.js, Express, Socket.IO, PostgreSQL (`pg`), bcrypt, express-session + connect-pg-simple, Groq API (OpenAI-compatible, via `fetch`)
 
 ---
 
@@ -127,7 +138,7 @@ client/src/
 server/
   index.js              db.js              schema.sql
   routes/  authRoutes  roomRoutes  messageRoutes  userRoutes  aiRoutes
-  middleware/auth.js    lib/ai.js  (runClaude, getQuiz, runCompanion agent loop)
+  middleware/auth.js    lib/ai.js  (runLLM, getQuiz, runCompanion agent loop — Groq)
 ```
 
 ---

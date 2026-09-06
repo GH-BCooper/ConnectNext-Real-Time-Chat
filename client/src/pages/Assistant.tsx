@@ -73,15 +73,12 @@ export default function Assistant() {
   }
 
   return (
-    <div className="cn-page">
+    <div className="cn-page cn-page--app">
       <NavBar username={user?.username} />
 
-      <div
-        className="cn-container"
-        style={{ display: "flex", flexDirection: "column", maxWidth: 820 }}
-      >
-        <div style={{ marginBottom: 16 }}>
-          <h1 style={{ margin: "0 0 6px", fontSize: 28 }}>
+      <div className="cn-assistant">
+        <div>
+          <h1 style={{ margin: "0 0 6px", fontSize: "clamp(1.4rem, 5.5vw, 1.75rem)" }}>
             <span className="cn-grad-text">AI Tutor</span> 🧑‍🏫
           </h1>
           <p style={{ margin: 0, color: "var(--text-dim)", fontSize: 14 }}>
@@ -93,25 +90,14 @@ export default function Assistant() {
         {aiOff && (
           <div
             className="cn-card"
-            style={{ borderColor: "var(--amber)", marginBottom: 14, fontSize: 14 }}
+            style={{ borderColor: "var(--amber)", fontSize: 14 }}
           >
-            ⚠️ AI is turned off. Add <code>ANTHROPIC_API_KEY</code> to{" "}
+            ⚠️ AI is turned off. Add <code>GROQ_API_KEY</code> to{" "}
             <code>server/.env</code> and restart the server.
           </div>
         )}
 
-        <div
-          className="cn-card"
-          style={{
-            flex: 1,
-            minHeight: 360,
-            display: "flex",
-            flexDirection: "column",
-            gap: 12,
-            overflowY: "auto",
-            padding: 18,
-          }}
-        >
+        <div className="cn-card cn-assistant__thread">
           {messages.length === 0 && (
             <div style={{ margin: "auto", textAlign: "center", color: "var(--text-dim)" }}>
               <div style={{ fontSize: 40, marginBottom: 10 }}>✨</div>
@@ -136,10 +122,11 @@ export default function Assistant() {
               key={i}
               style={{
                 alignSelf: m.role === "user" ? "flex-end" : "flex-start",
-                maxWidth: "85%",
+                maxWidth: "88%",
               }}
             >
               <div
+                className="cn-bubble"
                 style={{
                   padding: "10px 14px",
                   borderRadius: 12,
@@ -174,13 +161,12 @@ export default function Assistant() {
           <div ref={bottomRef} />
         </div>
 
-        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+        <div className="cn-composer">
           <input
-            style={{ flex: 1 }}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send(input)}
-            placeholder="Ask the tutor anything about your studying…"
+            placeholder="Ask the tutor anything…"
             disabled={aiOff || thinking}
           />
           <button onClick={() => send(input)} disabled={aiOff || thinking || !input.trim()}>
@@ -197,8 +183,6 @@ export default function Assistant() {
           )}
         </div>
       </div>
-
-      <footer className="cn-footer">© 2026 Made by Brett Cooper</footer>
     </div>
   );
 }

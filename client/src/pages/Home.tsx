@@ -27,14 +27,21 @@ export default function Home() {
   return (
     <div className="cn-page">
       <div className="cn-container" style={{ textAlign: "center" }}>
-        <div style={{ padding: "60px 0 40px" }}>
+        <div style={{ padding: "clamp(32px, 8vw, 60px) 0 40px" }}>
           <span className="cn-pill" style={{ marginBottom: 20 }}>
             ⚡ Version 5 — study rooms with a built-in AI tutor
           </span>
-          <h1 style={{ fontSize: 56, margin: "16px 0 12px", letterSpacing: "-2px" }}>
+          <h1 className="cn-hero-title">
             <span className="cn-grad-text">ConnectNext</span>
           </h1>
-          <h2 style={{ fontWeight: 400, color: "var(--text-dim)", fontSize: 22, margin: "0 0 8px" }}>
+          <h2
+            style={{
+              fontWeight: 400,
+              color: "var(--text-dim)",
+              fontSize: "clamp(1.05rem, 4.5vw, 1.375rem)",
+              margin: "0 0 8px",
+            }}
+          >
             Study together in real time — and prove it stuck.
           </h2>
           <p style={{ color: "var(--text-faint)", maxWidth: 560, margin: "16px auto 32px" }}>
@@ -55,14 +62,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-            gap: 16,
-            textAlign: "left",
-          }}
-        >
+        <div className="cn-feature-grid">
           {FEATURES.map((f) => (
             <div key={f.title} className="cn-card">
               <div style={{ fontSize: 28, marginBottom: 8 }}>{f.icon}</div>
@@ -76,14 +76,7 @@ export default function Home() {
           <h2 style={{ fontSize: 22, margin: "0 0 20px" }}>
             How a <span className="cn-grad-text">session</span> works
           </h2>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: 16,
-              textAlign: "left",
-            }}
-          >
+          <div className="cn-feature-grid">
             {STEPS.map((s) => (
               <div key={s.n} className="cn-card">
                 <div

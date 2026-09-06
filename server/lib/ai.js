@@ -1,11 +1,17 @@
-import Anthropic from "@anthropic-ai/sdk";
+// ---------------------------------------------------------------------------
+// AI layer — powered by Groq (OpenAI-compatible chat completions API).
+// One place for every Claude/LLM call the app makes.
+// ---------------------------------------------------------------------------
 
-// Anthropic Client (reads ANTHROPIC_API_KEY from env)
-const client = new Anthropic();
+// Groq API key. `GROQ_API_KEY` is the canonical name; `GROK_API_KEY` is accepted
+// as a fallback because it's an easy typo.
+const GROQ_KEY = process.env.GROQ_API_KEY || process.env.GROK_API_KEY || "";
 
-// Default to Sonnet 5 — fast + cheap, ideal for a learning project.
-// Override with AI_MODEL in server/.env (e.g. claude-opus-5 for deeper answers).
-const MODEL = process.env.AI_MODEL || "claude-sonnet-5";
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+
+// Default model — fast, capable, supports tool use + JSON mode on Groq.
+// Override with AI_MODEL in server/.env (e.g. "openai/gpt-oss-20b" for speed).
+const MODEL = process.env.AI_MODEL || "openai/gpt-oss-120b";
 
 // Reserved username shown for AI-generated messages
 export const AI_BOT_USERNAME = "AI Assistant";
@@ -13,31 +19,61 @@ export const AI_BOT_USERNAME = "AI Assistant";
 // True only when an API key is configured. Routes use this to return a friendly
 // "AI is off" message instead of a 500 error.
 export function aiAvailable() {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
+  return Boolean(GROQ_KEY);
 }
 
 export const AI_MODEL_NAME = MODEL;
 
 // ---------------------------------------------------------------------------
-// Shared helper: one system + user prompt -> plain text answer
+// Low-level: one chat-completions call. Returns the raw `message` object.
 // ---------------------------------------------------------------------------
-async function runClaude(system, user, maxTokens = 600) {
-  const response = await client.messages.create({
+async function chat({ messages, maxTokens = 600, tools, jsonMode = false }) {
+  const body = {
     model: MODEL,
     max_tokens: maxTokens,
-    system,
-    messages: [{ role: "user", content: user }],
+    messages,
+  };
+  if (tools && tools.length) body.tools = tools;
+  if (jsonMode) body.response_format = { type: "json_object" };
+
+  const res = await fetch(GROQ_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${GROQ_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
   });
 
-  const textBlock = response.content.find((b) => b.type === "text");
-  return textBlock?.text?.trim() || "";
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Groq API ${res.status}: ${detail.slice(0, 300)}`);
+  }
+
+  const data = await res.json();
+  return data.choices?.[0]?.message || {};
+}
+
+// ---------------------------------------------------------------------------
+// Shared helper: one system + user prompt -> plain text answer
+// ---------------------------------------------------------------------------
+async function runLLM(system, user, maxTokens = 600, jsonMode = false) {
+  const message = await chat({
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+    maxTokens,
+    jsonMode,
+  });
+  return (message.content || "").trim();
 }
 
 // ---------------------------------------------------------------------------
 // Feature 1 — short in-room reply from the AI tutor (/ai or @ai)
 // ---------------------------------------------------------------------------
 export async function getAIReply(question) {
-  const reply = await runClaude(
+  const reply = await runLLM(
     "You are the ConnectNext AI tutor, sitting inside a real-time study room. " +
       "Answer the group's question clearly and accurately in 2-4 short sentences, " +
       "the way a good study partner would. Plain text, no markdown headings.",
@@ -54,7 +90,7 @@ export async function getConversationSummary(messages) {
     .map((m) => `${m.username}: ${m.content}`)
     .join("\n");
 
-  const summary = await runClaude(
+  const summary = await runLLM(
     "You turn a group study session into revision notes. Produce at most 6 concise " +
       "bullet points capturing the key concepts, definitions and takeaways worth " +
       "remembering. Start each line with '- '. Skip small talk.",
@@ -71,7 +107,7 @@ export async function getIcebreakers(roomName, recentMessages) {
     ? `Recent messages:\n${recentMessages.map((m) => `${m.username}: ${m.content}`).join("\n")}`
     : "The room has no messages yet.";
 
-  const text = await runClaude(
+  const text = await runLLM(
     "You help a study group go deeper. Suggest exactly 3 short, open-ended questions " +
       "that would test understanding or open up the topic further. If the room is empty, " +
       "base them on the room's subject. Return a plain numbered list, nothing else.",
@@ -93,7 +129,7 @@ export async function getQuiz(roomName, messages) {
     return { questions: [], note: "Study a bit more first — there isn't enough here to quiz on yet." };
   }
 
-  const raw = await runClaude(
+  const raw = await runLLM(
     "You write short recall quizzes from a study session. Respond with STRICT JSON only, " +
       "no code fences, shaped exactly: " +
       '{"questions": [{"q": string, "options": [string, string, string, string], ' +
@@ -102,6 +138,7 @@ export async function getQuiz(roomName, messages) {
       "Exactly four options each, only one correct.",
     `Study room "${roomName}" session:\n\n${studyText}`,
     900,
+    true,
   );
 
   try {
@@ -131,7 +168,7 @@ export async function getQuiz(roomName, messages) {
 // Feature 4 — polish a draft message
 // ---------------------------------------------------------------------------
 export async function getPolishedMessage(text) {
-  const polished = await runClaude(
+  const polished = await runLLM(
     "You are a writing assistant. Rewrite the user's chat message so it is clear, " +
       "friendly and well-phrased. Keep it roughly the same length and meaning. " +
       "Return ONLY the rewritten message, no quotes or commentary.",
@@ -153,13 +190,14 @@ export async function getRoomVibe(roomName, messages) {
     .map((m) => `${m.username}: ${m.content}`)
     .join("\n");
 
-  const raw = await runClaude(
+  const raw = await runLLM(
     "You read how a group study session is going. Respond with STRICT JSON only, no code fences, " +
       'shaped exactly: {"mood": string (one or two words, e.g. "Locked in" / "Drifting" / "Confused"), ' +
       '"emoji": string (single emoji), "energy": integer 1-5 (focus level), ' +
       '"note": string (one helpful sentence, max 20 words)}.',
     `Study room "${roomName}" recent messages:\n\n${transcript}`,
     300,
+    true,
   );
 
   try {
@@ -176,10 +214,11 @@ export async function getRoomVibe(roomName, messages) {
 }
 
 // ---------------------------------------------------------------------------
-// Feature 6 (NEW in v4) — agentic AI Companion with tool use + memory
+// Feature 6 — agentic AI Companion with tool use + memory
 // ---------------------------------------------------------------------------
 // `history` is the running conversation [{ role: "user"|"assistant", content }].
-// `tools` is [{ name, description, input_schema }].
+// `tools` is [{ name, description, input_schema }] (Anthropic-style — converted
+//   here to the OpenAI/Groq function-tool shape).
 // `runTool(name, input)` executes a tool and returns a string result.
 // Returns { reply, toolsUsed: string[] }.
 export async function runCompanion(history, tools, runTool) {
@@ -190,46 +229,66 @@ export async function runCompanion(history, tools, runTool) {
     "quiz the user when it helps, and keep answers reasonably short. Use plain text with the " +
     "occasional emoji. If a tool returns nothing useful, say so honestly.";
 
-  const messages = history.slice(-12).map((m) => ({
-    role: m.role === "assistant" ? "assistant" : "user",
-    content: String(m.content || "").slice(0, 4000),
+  const openaiTools = tools.map((t) => ({
+    type: "function",
+    function: {
+      name: t.name,
+      description: t.description,
+      parameters: t.input_schema || { type: "object", properties: {} },
+    },
   }));
+
+  const messages = [
+    { role: "system", content: system },
+    ...history.slice(-12).map((m) => ({
+      role: m.role === "assistant" ? "assistant" : "user",
+      content: String(m.content || "").slice(0, 4000),
+    })),
+  ];
 
   const toolsUsed = [];
 
   for (let step = 0; step < 5; step++) {
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 900,
-      system,
-      tools,
+    const message = await chat({
       messages,
+      maxTokens: 900,
+      tools: openaiTools,
     });
 
-    messages.push({ role: "assistant", content: response.content });
+    const calls = message.tool_calls || [];
 
-    if (response.stop_reason !== "tool_use") {
-      const textBlock = response.content.find((b) => b.type === "text");
-      return { reply: textBlock?.text?.trim() || "…", toolsUsed };
+    if (calls.length === 0) {
+      return { reply: (message.content || "").trim() || "…", toolsUsed };
     }
 
-    const toolResults = [];
-    for (const block of response.content) {
-      if (block.type !== "tool_use") continue;
-      toolsUsed.push(block.name);
+    // Record the assistant turn that requested the tools.
+    messages.push({
+      role: "assistant",
+      content: message.content || "",
+      tool_calls: calls,
+    });
+
+    for (const call of calls) {
+      const name = call.function?.name;
+      toolsUsed.push(name);
+      let input = {};
+      try {
+        input = JSON.parse(call.function?.arguments || "{}");
+      } catch {
+        input = {};
+      }
       let result;
       try {
-        result = await runTool(block.name, block.input || {});
+        result = await runTool(name, input);
       } catch (err) {
         result = `Tool error: ${err.message}`;
       }
-      toolResults.push({
-        type: "tool_result",
-        tool_use_id: block.id,
+      messages.push({
+        role: "tool",
+        tool_call_id: call.id,
         content: String(result).slice(0, 6000),
       });
     }
-    messages.push({ role: "user", content: toolResults });
   }
 
   return { reply: "I looked into that but couldn't wrap it up — try asking again.", toolsUsed };

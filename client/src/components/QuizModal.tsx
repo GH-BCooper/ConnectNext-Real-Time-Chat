@@ -31,17 +31,11 @@ export default function QuizModal({
   const allAnswered = Object.keys(answers).length === questions.length;
 
   return (
-    <div style={overlay} onClick={onClose}>
+    <div className="cn-modal-overlay" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="cn-card"
-        style={{
-          maxWidth: 560,
-          width: "92%",
-          maxHeight: "82vh",
-          overflowY: "auto",
-          borderColor: "var(--cyan)",
-        }}
+        className="cn-card cn-modal"
+        style={{ borderColor: "var(--cyan)" }}
       >
         <h3 style={{ marginTop: 0, color: "var(--cyan)" }}>❓ Quiz Me</h3>
 
@@ -89,6 +83,7 @@ export default function QuizModal({
                       setAnswers((a) => ({ ...a, [qi]: oi }))
                     }
                     disabled={submitted}
+                    className="cn-bubble"
                     style={{
                       textAlign: "left",
                       background: bg,
@@ -96,6 +91,9 @@ export default function QuizModal({
                       color: "var(--text)",
                       fontWeight: 500,
                       padding: "9px 12px",
+                      whiteSpace: "normal",
+                      height: "auto",
+                      width: "100%",
                     }}
                   >
                     {String.fromCharCode(65 + oi)}. {opt}
@@ -146,13 +144,3 @@ export default function QuizModal({
     </div>
   );
 }
-
-const overlay = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(0,0,0,0.6)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  zIndex: 100,
-} as const;
