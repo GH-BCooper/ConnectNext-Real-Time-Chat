@@ -34,6 +34,16 @@ ALTER TABLE rooms ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE rooms ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
 ALTER TABLE rooms ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
+-- v4 fix: room names must be unique (the API and seed both assume this, but the
+-- original table had no constraint). De-duplicate first, then enforce it.
+DELETE FROM rooms a USING rooms b WHERE a.name = b.name AND a.id > b.id;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'rooms_name_unique') THEN
+    ALTER TABLE rooms ADD CONSTRAINT rooms_name_unique UNIQUE (name);
+  END IF;
+END $$;
+
 -- Insert sample rooms
 INSERT INTO rooms (name, description) VALUES
   ('General', 'General discussion room'),

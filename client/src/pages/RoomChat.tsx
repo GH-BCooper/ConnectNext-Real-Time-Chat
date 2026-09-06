@@ -1,111 +1,86 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import socket from "../socket/socket";
+import { useAuth } from "../lib/useAuth";
 import api from "../api/axios";
 
-// Room Chat Component
 export default function RoomChat() {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
 
   const [searchParams] = useSearchParams();
   const roomId = searchParams.get("roomId");
 
-  // State Management
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<any[]>([]);
-  const [user, setUser] = useState<any>(null);
   const [typingUser, setTypingUser] = useState("");
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [roomName, setRoomName] = useState("");
-  const [loading, setLoading] = useState(true);
   const [aiTyping, setAiTyping] = useState(false);
   const [search, setSearch] = useState("");
   const [polishing, setPolishing] = useState(false);
 
-  // Single AI modal used for both summary and icebreakers
   const [modal, setModal] = useState<{ title: string; body: string } | null>(null);
-  const [busy, setBusy] = useState<"" | "summary" | "icebreakers">("");
+  const [busy, setBusy] = useState<"" | "summary" | "icebreakers" | "vibe">("");
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
-
-  // Auth check
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await api.get("/auth/me");
-        setUser(res.data);
-      } catch {
-        navigate("/login");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchUser();
-  }, [navigate]);
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Room name
   useEffect(() => {
     if (!roomId) return;
-    const fetchRoomName = async () => {
-      try {
-        const res = await api.get("/rooms");
+    api
+      .get("/rooms")
+      .then((res) => {
         const room = res.data.find((r: any) => r.id == roomId);
         setRoomName(room?.name || "Chat Room");
-      } catch (error) {
-        console.error("Error fetching room name:", error);
-      }
-    };
-    fetchRoomName();
+      })
+      .catch((err) => console.error("Error fetching room name:", err));
   }, [roomId]);
 
-  // Auto scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Socket events
+  // Socket events — joins on mount, cleanly leaves on unmount / room change
   useEffect(() => {
     if (!roomId || !user) return;
 
     socket.emit("joinRoom", { roomId, username: user.username });
 
-    const handleReceiveMessage = (data: any) =>
-      setMessages((prev) => [...prev, data]);
-    const handleTyping = (data: any) => {
+    const onReceive = (data: any) => setMessages((prev) => [...prev, data]);
+    const onTyping = (data: any) => {
       setTypingUser(data.username);
-      setTimeout(() => setTypingUser(""), 1000);
+      if (typingTimer.current) clearTimeout(typingTimer.current);
+      typingTimer.current = setTimeout(() => setTypingUser(""), 1500);
     };
-    const handleSystem = (data: any) => setMessages((prev) => [...prev, data]);
-    const handleUsers = (users: string[]) => setOnlineUsers(users);
-    const handleAiTyping = (isTyping: boolean) => setAiTyping(isTyping);
+    const onSystem = (data: any) => setMessages((prev) => [...prev, data]);
+    const onUsers = (users: string[]) => setOnlineUsers(users);
+    const onAiTyping = (v: boolean) => setAiTyping(v);
 
-    socket.on("receiveMessage", handleReceiveMessage);
-    socket.on("typing", handleTyping);
-    socket.on("systemMessage", handleSystem);
-    socket.on("roomUsers", handleUsers);
-    socket.on("aiTyping", handleAiTyping);
+    socket.on("receiveMessage", onReceive);
+    socket.on("typing", onTyping);
+    socket.on("systemMessage", onSystem);
+    socket.on("roomUsers", onUsers);
+    socket.on("aiTyping", onAiTyping);
 
     return () => {
-      socket.off("receiveMessage", handleReceiveMessage);
-      socket.off("typing", handleTyping);
-      socket.off("systemMessage", handleSystem);
-      socket.off("roomUsers", handleUsers);
-      socket.off("aiTyping", handleAiTyping);
+      socket.emit("leaveRoom", { roomId, username: user.username });
+      socket.off("receiveMessage", onReceive);
+      socket.off("typing", onTyping);
+      socket.off("systemMessage", onSystem);
+      socket.off("roomUsers", onUsers);
+      socket.off("aiTyping", onAiTyping);
     };
   }, [roomId, user]);
 
   // Previous messages
   useEffect(() => {
     if (!roomId) return;
-    const fetchMessages = async () => {
-      try {
-        const res = await api.get(`/messages/${roomId}`);
-        setMessages(res.data);
-      } catch (error) {
-        console.error("Error fetching messages:", error);
-      }
-    };
-    fetchMessages();
+    api
+      .get(`/messages/${roomId}`)
+      .then((res) => setMessages(res.data))
+      .catch((err) => console.error("Error fetching messages:", err));
   }, [roomId]);
 
   const sendMessage = () => {
@@ -114,40 +89,42 @@ export default function RoomChat() {
     setMessage("");
   };
 
-  const exitRoom = () => {
-    socket.emit("leaveRoom", { roomId, username: user?.username });
-    navigate("/dashboard");
-  };
+  const exitRoom = () => navigate("/dashboard");
 
-  // AI: summarize the conversation
-  const summarize = async () => {
+  const runAI = async (
+    kind: "summary" | "icebreakers" | "vibe",
+    url: string,
+    title: string,
+    pick: (d: any) => string,
+  ) => {
     if (!roomId) return;
-    setBusy("summary");
+    setBusy(kind);
     try {
-      const res = await api.get(`/ai/summarize/${roomId}`);
-      setModal({ title: "✨ Conversation Summary", body: res.data.summary });
-    } catch {
-      setModal({ title: "✨ Conversation Summary", body: "Failed to generate summary. Try again." });
+      const res = await api.get(url);
+      setModal({ title, body: pick(res.data) });
+    } catch (err: any) {
+      setModal({
+        title,
+        body: err.response?.data?.message || "Something went wrong. Try again.",
+      });
     } finally {
       setBusy("");
     }
   };
 
-  // AI: suggest conversation starters
-  const icebreakers = async () => {
-    if (!roomId) return;
-    setBusy("icebreakers");
-    try {
-      const res = await api.get(`/ai/icebreakers/${roomId}`);
-      setModal({ title: "💡 Conversation Starters", body: res.data.ideas });
-    } catch {
-      setModal({ title: "💡 Conversation Starters", body: "Failed to load ideas. Try again." });
-    } finally {
-      setBusy("");
-    }
-  };
+  const summarize = () =>
+    runAI("summary", `/ai/summarize/${roomId}`, "✨ Conversation Summary", (d) => d.summary);
+  const icebreakers = () =>
+    runAI("icebreakers", `/ai/icebreakers/${roomId}`, "💡 Conversation Starters", (d) => d.ideas);
+  const vibeCheck = () =>
+    runAI(
+      "vibe",
+      `/ai/vibe/${roomId}`,
+      "🎭 Room Vibe Check",
+      (d) =>
+        `${d.emoji}  ${d.mood}\n\nEnergy: ${"🔥".repeat(d.energy)}${"·".repeat(5 - d.energy)}\n\n${d.note}`,
+    );
 
-  // AI: polish the current draft message
   const polish = async () => {
     if (!message.trim()) return;
     setPolishing(true);
@@ -155,7 +132,7 @@ export default function RoomChat() {
       const res = await api.post("/ai/polish", { text: message });
       setMessage(res.data.polished);
     } catch {
-      // keep the original draft on failure
+      /* keep original draft */
     } finally {
       setPolishing(false);
     }
@@ -163,77 +140,59 @@ export default function RoomChat() {
 
   if (loading) {
     return (
-      <div style={fullCenter}>
-        <p>Loading...</p>
+      <div className="cn-page">
+        <div className="cn-container">Loading…</div>
       </div>
     );
   }
 
   const q = search.trim().toLowerCase();
   const shown = q
-    ? messages.filter((m) =>
-        (m.message || m.content || "").toLowerCase().includes(q),
-      )
+    ? messages.filter((m) => (m.message || m.content || "").toLowerCase().includes(q))
     : messages;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100vh",
-        background: "#0f172a",
-        color: "white",
-      }}
-    >
+    <div className="cn-page" style={{ height: "100vh" }}>
       {/* Header */}
       <div
         style={{
-          padding: "15px 20px",
-          borderBottom: "1px solid #334155",
+          padding: "12px 20px",
+          borderBottom: "1px solid var(--border)",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          background: "#1e293b",
+          background: "rgba(15,23,42,0.7)",
           flexWrap: "wrap",
-          gap: "10px",
+          gap: 10,
         }}
       >
-        <h2 style={{ margin: 0 }}>{roomName || "Chat Room"}</h2>
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-          <button onClick={icebreakers} disabled={busy !== ""} style={hdrBtn("#0891b2")}>
-            {busy === "icebreakers" ? "Thinking..." : "💡 Icebreakers"}
+        <h2 style={{ margin: 0, fontSize: 18 }}># {roomName || "Chat Room"}</h2>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button onClick={icebreakers} disabled={busy !== ""} style={{ background: "var(--cyan)" }}>
+            {busy === "icebreakers" ? "Thinking…" : "💡 Icebreakers"}
           </button>
-          <button onClick={summarize} disabled={busy !== ""} style={hdrBtn("#7c3aed")}>
-            {busy === "summary" ? "Summarizing..." : "✨ Summarize"}
+          <button onClick={vibeCheck} disabled={busy !== ""} style={{ background: "var(--pink)" }}>
+            {busy === "vibe" ? "Reading…" : "🎭 Vibe"}
           </button>
-          <button onClick={exitRoom} style={hdrBtn("#dc2626")}>
-            Exit Room
+          <button onClick={summarize} disabled={busy !== ""} style={{ background: "var(--brand-2)" }}>
+            {busy === "summary" ? "Summarising…" : "✨ Summarize"}
+          </button>
+          <button onClick={exitRoom} style={{ background: "var(--red)" }}>
+            Exit
           </button>
         </div>
       </div>
 
-      {/* AI Modal */}
       {modal && (
         <div style={overlay} onClick={() => setModal(null)}>
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "#1e293b",
-              padding: "24px",
-              borderRadius: "10px",
-              maxWidth: "500px",
-              width: "90%",
-              maxHeight: "70vh",
-              overflowY: "auto",
-              border: "1px solid #7c3aed",
-            }}
+            className="cn-card"
+            style={{ maxWidth: 500, width: "90%", maxHeight: "70vh", overflowY: "auto", borderColor: "var(--brand-2)" }}
           >
-            <h3 style={{ marginTop: 0, color: "#a78bfa" }}>{modal.title}</h3>
-            <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
-              {modal.body}
-            </div>
-            <button onClick={() => setModal(null)} style={{ ...hdrBtn("#334155"), marginTop: "16px" }}>
+            <h3 style={{ marginTop: 0, color: "var(--brand-2)" }}>{modal.title}</h3>
+            <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{modal.body}</div>
+            <button onClick={() => setModal(null)} style={{ marginTop: 16, background: "var(--bg-3)" }}>
               Close
             </button>
           </div>
@@ -242,36 +201,27 @@ export default function RoomChat() {
 
       {/* Main */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        <div style={{ flex: 3, display: "flex", flexDirection: "column", padding: "20px" }}>
-          {/* Search */}
+        <div style={{ flex: 3, display: "flex", flexDirection: "column", padding: 16 }}>
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="🔍 Search messages in this room"
-            style={{
-              padding: "9px",
-              marginBottom: "10px",
-              borderRadius: "6px",
-              border: "1px solid #334155",
-              background: "#1e293b",
-              color: "white",
-              outline: "none",
-            }}
+            style={{ marginBottom: 10 }}
           />
 
-          {/* Messages */}
           <div
             style={{
               flex: 1,
               overflowY: "auto",
-              padding: "10px",
-              borderRadius: "8px",
-              background: "#020617",
-              marginBottom: "10px",
+              padding: 12,
+              borderRadius: 10,
+              background: "var(--bg-1)",
+              border: "1px solid var(--border)",
+              marginBottom: 10,
             }}
           >
             {shown.length === 0 && (
-              <p style={{ color: "#64748b", fontSize: "13px" }}>
+              <p style={{ color: "var(--text-faint)", fontSize: 13 }}>
                 {q ? "No messages match your search." : "No messages yet — say hi!"}
               </p>
             )}
@@ -280,10 +230,7 @@ export default function RoomChat() {
               const isMe = msg.username === user?.username;
               const isAI = msg.username === "AI Assistant";
               const time =
-                msg.time ||
-                (msg.created_at
-                  ? new Date(msg.created_at).toLocaleTimeString()
-                  : "");
+                msg.time || (msg.created_at ? new Date(msg.created_at).toLocaleTimeString() : "");
 
               return (
                 <div
@@ -291,84 +238,60 @@ export default function RoomChat() {
                   style={{
                     display: "flex",
                     justifyContent: isMe ? "flex-end" : "flex-start",
-                    marginBottom: "8px",
+                    marginBottom: 8,
                   }}
                 >
                   <div
                     style={{
-                      maxWidth: "60%",
-                      padding: "10px",
-                      borderRadius: "10px",
-                      background: isAI ? "#4c1d95" : isMe ? "#2563eb" : "#1e293b",
-                      border: isAI ? "1px solid #a78bfa" : "none",
+                      maxWidth: "70%",
+                      padding: "9px 12px",
+                      borderRadius: 12,
+                      background: isAI ? "#3b0764" : isMe ? "var(--brand)" : "var(--bg-2)",
+                      border: isAI ? "1px solid var(--brand-2)" : "1px solid var(--border)",
                     }}
                   >
-                    <strong style={{ fontSize: "12px" }}>
-                      {isAI
-                        ? "✨ AI Assistant"
-                        : isMe
-                          ? "You"
-                          : msg.username || "System"}
+                    <strong style={{ fontSize: 11, opacity: 0.85 }}>
+                      {isAI ? "✨ AI Assistant" : isMe ? "You" : msg.username || "System"}
                     </strong>
-                    <div>{msg.message || msg.content}</div>
-                    {time && (
-                      <div style={{ fontSize: "10px", opacity: 0.6 }}>{time}</div>
-                    )}
+                    <div style={{ fontSize: 14 }}>{msg.message || msg.content}</div>
+                    {time && <div style={{ fontSize: 10, opacity: 0.6 }}>{time}</div>}
                   </div>
                 </div>
               );
             })}
 
             {aiTyping && (
-              <p style={{ fontSize: "12px", marginBottom: "10px", color: "#a78bfa" }}>
-                ✨ AI Assistant is thinking...
-              </p>
+              <p style={{ fontSize: 12, color: "var(--brand-2)" }}>✨ AI Assistant is thinking…</p>
             )}
-
-            <div ref={bottomRef}></div>
+            <div ref={bottomRef} />
           </div>
 
           {typingUser && typingUser !== user?.username && (
-            <p style={{ fontSize: "12px", marginBottom: "10px" }}>
-              {typingUser} is typing...
+            <p style={{ fontSize: 12, marginBottom: 8, color: "var(--text-dim)" }}>
+              {typingUser} is typing…
             </p>
           )}
 
-          {/* Input */}
-          <div style={{ display: "flex", gap: "8px" }}>
+          <div style={{ display: "flex", gap: 8 }}>
             <input
-              style={{
-                flex: 1,
-                padding: "10px",
-                borderRadius: "6px",
-                border: "1px solid #334155",
-                background: "#1e293b",
-                color: "white",
-                outline: "none",
-              }}
+              style={{ flex: 1 }}
               value={message}
               onChange={(e) => {
                 setMessage(e.target.value);
-                if (user?.username) {
-                  socket.emit("typing", { roomId, username: user.username });
-                }
+                if (user?.username) socket.emit("typing", { roomId, username: user.username });
               }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") sendMessage();
-              }}
-              placeholder="Type a message... (try /ai <question>)"
+              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+              placeholder="Type a message… (try /ai <question>)"
             />
             <button
               onClick={polish}
               disabled={polishing || !message.trim()}
               title="Rewrite my message with AI"
-              style={{ ...hdrBtn("#7c3aed"), opacity: polishing || !message.trim() ? 0.6 : 1 }}
+              style={{ background: "var(--brand-2)" }}
             >
-              {polishing ? "..." : "✨ Polish"}
+              {polishing ? "…" : "✨ Polish"}
             </button>
-            <button onClick={sendMessage} style={hdrBtn("#2563eb")}>
-              Send
-            </button>
+            <button onClick={sendMessage}>Send</button>
           </div>
         </div>
 
@@ -376,56 +299,36 @@ export default function RoomChat() {
         <div
           style={{
             flex: 1,
-            padding: "20px",
-            borderLeft: "1px solid #1e293b",
-            background: "#020617",
+            minWidth: 180,
+            padding: 16,
+            borderLeft: "1px solid var(--border)",
+            background: "var(--bg-1)",
             overflowY: "auto",
           }}
         >
-          <h3 style={{ marginTop: 0 }}>Online Users ({onlineUsers.length})</h3>
+          <h3 style={{ marginTop: 0, fontSize: 15 }}>Online ({onlineUsers.length})</h3>
           {onlineUsers.map((u, i) => (
             <div
               key={i}
               style={{
-                marginTop: "10px",
-                padding: "10px",
-                background: "#1e293b",
-                borderRadius: "6px",
+                marginTop: 8,
+                padding: 9,
+                background: "var(--bg-2)",
+                borderRadius: 8,
+                fontSize: 13,
               }}
             >
-              <span style={{ marginRight: "8px" }}>
-                {u === user?.username ? "🟢" : "⚪"}
-              </span>
+              <span style={{ marginRight: 8 }}>{u === user?.username ? "🟢" : "⚪"}</span>
               {u === user?.username ? "You" : u}
             </div>
           ))}
         </div>
       </div>
 
-      <footer
-        style={{
-          padding: "15px 20px",
-          textAlign: "center",
-          borderTop: "1px solid #334155",
-          color: "#64748b",
-          fontSize: "12px",
-          background: "#1e293b",
-        }}
-      >
-        © 2026 Made by Brett Cooper
-      </footer>
+      <footer className="cn-footer">© 2026 Made by Brett Cooper</footer>
     </div>
   );
 }
-
-const fullCenter = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  height: "100vh",
-  background: "#0f172a",
-  color: "white",
-} as const;
 
 const overlay = {
   position: "fixed",
@@ -436,13 +339,3 @@ const overlay = {
   justifyContent: "center",
   zIndex: 100,
 } as const;
-
-const hdrBtn = (bg: string) => ({
-  padding: "8px 14px",
-  background: bg,
-  border: "none",
-  borderRadius: "6px",
-  color: "white",
-  cursor: "pointer",
-  fontWeight: "bold" as const,
-});

@@ -1,91 +1,62 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import NavBar from "../components/NavBar";
+import { useAuth } from "../lib/useAuth";
 import api from "../api/axios";
 
-// Profile Component - shows the logged-in user's info and simple stats
 export default function Profile() {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
 
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const res = await api.get("/users/stats");
-        setProfile(res.data);
-      } catch (err: any) {
-        if (err.response?.status === 401) {
-          navigate("/login");
-          return;
-        }
-        setError("Could not load your profile");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
+    api
+      .get("/users/stats")
+      .then((res) => setProfile(res.data))
+      .catch((err) => {
+        if (err.response?.status === 401) navigate("/login");
+        else setError("Could not load your profile");
+      })
+      .finally(() => setLoading(false));
   }, [navigate]);
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
-      <div style={page}>
-        <p>Loading...</p>
+      <div className="cn-page">
+        <div className="cn-container">Loading…</div>
       </div>
     );
   }
 
   return (
-    <div style={page}>
-      <div
-        style={{
-          width: "100%",
-          maxWidth: "440px",
-          background: "#1e293b",
-          borderRadius: "12px",
-          padding: "32px",
-          boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
-        }}
-      >
-        <h1 style={{ marginTop: 0, marginBottom: "24px" }}>My Profile</h1>
+    <div className="cn-page">
+      <NavBar username={user?.username} />
+
+      <div className="cn-container" style={{ maxWidth: 520 }}>
+        <h1 style={{ margin: "0 0 20px", fontSize: 28 }}>
+          <span className="cn-grad-text">My Profile</span> 👤
+        </h1>
 
         {error && <p style={{ color: "#fca5a5" }}>{error}</p>}
 
         {profile && (
-          <>
+          <div className="cn-card">
             <Row label="Username" value={profile.username} />
             <Row label="Email" value={profile.email} />
-            <Row
-              label="Joined"
-              value={new Date(profile.created_at).toLocaleDateString()}
-            />
+            <Row label="Joined" value={new Date(profile.created_at).toLocaleDateString()} />
 
-            <div style={{ display: "flex", gap: "12px", marginTop: "20px" }}>
-              <Stat label="Messages sent" value={profile.messageCount} />
-              <Stat label="Rooms created" value={profile.roomsCreated} />
+            <div style={{ display: "flex", gap: 12, marginTop: 18 }}>
+              <Stat label="Messages sent" value={profile.messageCount} color="var(--cyan)" />
+              <Stat label="Rooms created" value={profile.roomsCreated} color="var(--pink)" />
             </div>
-          </>
+          </div>
         )}
-
-        <button
-          onClick={() => navigate("/dashboard")}
-          style={{
-            marginTop: "28px",
-            width: "100%",
-            padding: "11px",
-            background: "#2563eb",
-            border: "none",
-            borderRadius: "6px",
-            color: "white",
-            fontWeight: "bold",
-            cursor: "pointer",
-          }}
-        >
-          ← Back to Dashboard
-        </button>
       </div>
+
+      <footer className="cn-footer">© 2026 Made by Brett Cooper</footer>
     </div>
   );
 }
@@ -97,38 +68,29 @@ function Row({ label, value }: { label: string; value: string }) {
         display: "flex",
         justifyContent: "space-between",
         padding: "10px 0",
-        borderBottom: "1px solid #334155",
+        borderBottom: "1px solid var(--border)",
       }}
     >
-      <span style={{ color: "#94a3b8" }}>{label}</span>
-      <span style={{ fontWeight: "bold" }}>{value}</span>
+      <span style={{ color: "var(--text-dim)" }}>{label}</span>
+      <span style={{ fontWeight: 700 }}>{value}</span>
     </div>
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <div
       style={{
         flex: 1,
-        background: "#0f172a",
-        borderRadius: "8px",
-        padding: "16px",
+        background: "var(--bg-1)",
+        border: "1px solid var(--border)",
+        borderRadius: 10,
+        padding: 16,
         textAlign: "center",
       }}
     >
-      <div style={{ fontSize: "26px", fontWeight: "bold" }}>{value ?? 0}</div>
-      <div style={{ fontSize: "12px", color: "#94a3b8" }}>{label}</div>
+      <div style={{ fontSize: 28, fontWeight: 800, color }}>{value ?? 0}</div>
+      <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{label}</div>
     </div>
   );
 }
-
-const page = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: "100vh",
-  background: "#0f172a",
-  color: "white",
-  padding: "20px",
-} as const;

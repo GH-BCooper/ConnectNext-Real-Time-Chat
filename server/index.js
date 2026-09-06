@@ -81,6 +81,11 @@ app.get("/", (req, res) => {
   res.send("ConnectNext backend running");
 });
 
+// Health Check (used by the client + deploy platforms)
+app.get("/health", (req, res) => {
+  res.json({ ok: true, uptime: process.uptime() });
+});
+
 // In-Memory Room User Store
 const roomUsers = {};
 

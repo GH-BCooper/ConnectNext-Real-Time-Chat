@@ -41,8 +41,9 @@ npm run dev
 ## 4. Test
 
 Open http://localhost:5173, register, create a room, and chat. Try `/ai hello`
-inside a room, and the **✨ Summarize** / **💡 Icebreakers** / **✨ Polish**
-buttons (these need `ANTHROPIC_API_KEY` set in `server/.env`).
+inside a room, the **✨ Summarize** / **💡 Icebreakers** / **🎭 Vibe** / **✨ Polish**
+buttons, the **🧭 Explore** search page, and the **🤖 AI Companion** at `/assistant`
+(the AI features need `ANTHROPIC_API_KEY` set in `server/.env`).
 
 ---
 

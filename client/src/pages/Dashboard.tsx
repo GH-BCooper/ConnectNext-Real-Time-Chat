@@ -1,64 +1,44 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import NavBar from "../components/NavBar";
+import { useAuth } from "../lib/useAuth";
 import api from "../api/axios";
 
-// Dashboard Component
+interface Room {
+  id: number;
+  name: string;
+  description?: string;
+  message_count?: number;
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
 
-  // State Management
-  const [user, setUser] = useState<any>(null);
-  const [rooms, setRooms] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Create-room form state
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
 
   useEffect(() => {
-    fetchUser();
-    fetchRooms();
+    api
+      .get("/rooms")
+      .then((res) => setRooms(res.data))
+      .catch((err) => console.error("Error fetching rooms:", err));
   }, []);
-
-  const fetchUser = async () => {
-    try {
-      const res = await api.get("/auth/me");
-      setUser(res.data);
-    } catch {
-      navigate("/login");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchRooms = async () => {
-    try {
-      const res = await api.get("/rooms");
-      setRooms(res.data);
-    } catch (error) {
-      console.error("Error fetching rooms:", error);
-    }
-  };
 
   const createRoom = async () => {
     if (!newName.trim()) {
       setCreateError("Room name is required");
       return;
     }
-
     setCreating(true);
     setCreateError("");
-
     try {
-      const res = await api.post("/rooms", {
-        name: newName,
-        description: newDesc,
-      });
+      const res = await api.post("/rooms", { name: newName, description: newDesc });
       setNewName("");
       setNewDesc("");
-      await fetchRooms();
       navigate(`/chat?roomId=${res.data.id}`);
     } catch (err: any) {
       setCreateError(err.response?.data?.message || "Could not create room");
@@ -67,179 +47,113 @@ export default function Dashboard() {
     }
   };
 
-  const logout = async () => {
-    try {
-      await api.post("/auth/logout");
-    } catch (error) {
-      console.error("Logout error:", error);
-    } finally {
-      navigate("/login");
-    }
-  };
-
   if (loading) {
     return (
-      <div style={centered}>
-        <p>Loading...</p>
+      <div className="cn-page">
+        <div className="cn-container">Loading…</div>
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100vh",
-        background: "#0f172a",
-        color: "white",
-      }}
-    >
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        {/* Sidebar */}
+    <div className="cn-page">
+      <NavBar username={user?.username} />
+
+      <div className="cn-container">
+        <h1 style={{ margin: "0 0 4px", fontSize: 30 }}>
+          Welcome back, <span className="cn-grad-text">{user?.username}</span> 🚀
+        </h1>
+        <p style={{ margin: "0 0 24px", color: "var(--text-dim)" }}>
+          Jump into a room, start a new one, or ask the{" "}
+          <a href="/assistant">AI Companion</a> what's going on.
+        </p>
+
         <div
           style={{
-            width: "280px",
-            background: "#1e293b",
-            padding: "20px",
-            borderRight: "1px solid #334155",
-            overflowY: "auto",
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 1fr) 300px",
+            gap: 24,
+            alignItems: "start",
           }}
         >
-          <h2 style={{ marginBottom: "20px" }}>ConnectNext</h2>
-
-          {user && (
-            <div style={{ marginBottom: "16px" }}>
-              <p style={{ fontSize: "14px", color: "#94a3b8", margin: 0 }}>
-                Welcome,
-              </p>
-              <p style={{ fontWeight: "bold", margin: "2px 0 0" }}>
-                {user.username}
-              </p>
-            </div>
-          )}
-
-          <button onClick={() => navigate("/profile")} style={btn("#334155")}>
-            👤 My Profile
-          </button>
-          <button
-            onClick={logout}
-            style={{ ...btn("#dc2626"), marginBottom: "24px" }}
-          >
-            Logout
-          </button>
-
-          {/* Create Room */}
-          <h3 style={{ margin: "0 0 10px", fontSize: "15px" }}>New Room</h3>
-          {createError && (
-            <p style={{ color: "#fca5a5", fontSize: "12px", margin: "0 0 8px" }}>
-              {createError}
-            </p>
-          )}
-          <input
-            placeholder="Room name"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            style={input}
-          />
-          <input
-            placeholder="Description (optional)"
-            value={newDesc}
-            onChange={(e) => setNewDesc(e.target.value)}
-            style={input}
-          />
-          <button
-            onClick={createRoom}
-            disabled={creating}
-            style={{ ...btn("#16a34a"), marginBottom: "24px", opacity: creating ? 0.6 : 1 }}
-          >
-            {creating ? "Creating..." : "+ Create Room"}
-          </button>
-
-          {/* Room List */}
-          <h3 style={{ margin: "0 0 12px", fontSize: "15px" }}>
-            Rooms ({rooms.length})
-          </h3>
-          {rooms.map((room) => (
-            <button
-              key={room.id}
-              onClick={() => navigate(`/chat?roomId=${room.id}`)}
-              style={{ ...btn("#2563eb"), textAlign: "left", marginBottom: "8px" }}
+          {/* Rooms grid */}
+          <div>
+            <h2 style={{ fontSize: 18, margin: "0 0 12px" }}>
+              Rooms <span style={{ color: "var(--text-faint)" }}>({rooms.length})</span>
+            </h2>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+                gap: 12,
+              }}
             >
-              {room.name}
-              <span style={{ display: "block", fontSize: "11px", opacity: 0.7 }}>
-                {room.message_count ?? 0} messages
-              </span>
-            </button>
-          ))}
-        </div>
+              {rooms.map((room) => (
+                <button
+                  key={room.id}
+                  onClick={() => navigate(`/chat?roomId=${room.id}`)}
+                  className="cn-card"
+                  style={{
+                    textAlign: "left",
+                    padding: 16,
+                    background: "var(--bg-2)",
+                    display: "block",
+                  }}
+                >
+                  <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
+                    # {room.name}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--text-dim)",
+                      minHeight: 30,
+                    }}
+                  >
+                    {room.description || "No description"}
+                  </div>
+                  <div style={{ marginTop: 8 }}>
+                    <span className="cn-pill" style={{ fontSize: 10 }}>
+                      💬 {room.message_count ?? 0} messages
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
 
-        {/* Main Area */}
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "40px 20px",
-            textAlign: "center",
-          }}
-        >
-          <h1 style={{ fontSize: "40px", marginBottom: "16px" }}>
-            Welcome to ConnectNext 🚀
-          </h1>
-          <p style={{ fontSize: "17px", color: "#94a3b8", maxWidth: "500px" }}>
-            Pick a room on the left to start chatting, spin up a new room, or
-            check your profile. Try <code>/ai your question</code> inside a room
-            to talk to the AI assistant.
-          </p>
+          {/* Create room */}
+          <div className="cn-card">
+            <h2 style={{ fontSize: 16, margin: "0 0 12px" }}>✨ New Room</h2>
+            {createError && (
+              <p style={{ color: "#fca5a5", fontSize: 12, margin: "0 0 8px" }}>
+                {createError}
+              </p>
+            )}
+            <input
+              placeholder="Room name"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              style={{ width: "100%", marginBottom: 8 }}
+            />
+            <input
+              placeholder="Description (optional)"
+              value={newDesc}
+              onChange={(e) => setNewDesc(e.target.value)}
+              style={{ width: "100%", marginBottom: 12 }}
+            />
+            <button
+              onClick={createRoom}
+              disabled={creating}
+              style={{ width: "100%", background: "var(--green)" }}
+            >
+              {creating ? "Creating…" : "+ Create Room"}
+            </button>
+          </div>
         </div>
       </div>
 
-      <footer style={footer}>© 2026 Made by Brett Cooper</footer>
+      <footer className="cn-footer">© 2026 Made by Brett Cooper</footer>
     </div>
   );
 }
-
-// Small shared style helpers
-const centered: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  height: "100vh",
-  background: "#0f172a",
-  color: "white",
-};
-
-const btn = (bg: string): CSSProperties => ({
-  width: "100%",
-  padding: "10px",
-  marginBottom: "10px",
-  background: bg,
-  border: "none",
-  borderRadius: "6px",
-  color: "white",
-  cursor: "pointer",
-  fontWeight: "bold",
-});
-
-const input: CSSProperties = {
-  width: "100%",
-  padding: "9px",
-  marginBottom: "8px",
-  borderRadius: "6px",
-  border: "1px solid #334155",
-  background: "#0f172a",
-  color: "white",
-  boxSizing: "border-box",
-};
-
-const footer: CSSProperties = {
-  padding: "15px 20px",
-  textAlign: "center",
-  borderTop: "1px solid #334155",
-  color: "#64748b",
-  fontSize: "12px",
-  background: "#1e293b",
-};

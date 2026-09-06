@@ -5,6 +5,8 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import RoomChat from "./pages/RoomChat";
 import Profile from "./pages/Profile";
+import Assistant from "./pages/Assistant";
+import Explore from "./pages/Explore";
 import NotFound from "./pages/NotFound";
 import "./styles/global.css";
 
@@ -21,9 +23,11 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* App Routes */}
+        {/* App Routes (protected via useAuth inside each page) */}
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/chat" element={<RoomChat />} />
+        <Route path="/explore" element={<Explore />} />
+        <Route path="/assistant" element={<Assistant />} />
         <Route path="/profile" element={<Profile />} />
 
         {/* 404 */}

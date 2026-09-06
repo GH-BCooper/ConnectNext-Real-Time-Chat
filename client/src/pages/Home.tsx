@@ -2,169 +2,71 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
 
-// Home Component - Landing Page
+const FEATURES = [
+  { icon: "💬", title: "Real-time rooms", text: "Create rooms, chat live, see who's online and who's typing." },
+  { icon: "🤖", title: "AI Companion", text: "A multi-turn assistant that searches your rooms, messages and stats to answer." },
+  { icon: "🎭", title: "Vibe Check", text: "Ask the AI to read a room's mood and energy in one tap." },
+  { icon: "✨", title: "Summarize & Polish", text: "Digest long threads, and rewrite your draft before you hit send." },
+  { icon: "💡", title: "Icebreakers", text: "Stuck? Claude suggests conversation starters based on the room." },
+  { icon: "🧭", title: "Explore", text: "Search every message across every room from one page." },
+];
+
 export default function Home() {
-  // Navigation Hook
   const navigate = useNavigate();
 
-  // If already logged in, skip the landing page
   useEffect(() => {
-    api
-      .get("/auth/me")
-      .then(() => navigate("/dashboard"))
-      .catch(() => {
-        // not logged in - stay on the landing page
-      });
+    api.get("/auth/me").then(() => navigate("/dashboard")).catch(() => {});
   }, [navigate]);
 
-  // UI Rendering
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100vh",
-        background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
-        color: "white",
-        justifyContent: "space-between",
-      }}
-    >
-      {/* Main Content */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          flex: 1,
-          textAlign: "center",
-          padding: "40px 20px",
-        }}
-      >
-        {/* Logo/Title */}
-        <h1
-          style={{
-            fontSize: "48px",
-            fontWeight: "bold",
-            marginBottom: "20px",
-            background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
-            backgroundClip: "text",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-          }}
-        >
-          ConnectNext
-        </h1>
+    <div className="cn-page">
+      <div className="cn-container" style={{ textAlign: "center" }}>
+        <div style={{ padding: "60px 0 40px" }}>
+          <span className="cn-pill" style={{ marginBottom: 20 }}>
+            ⚡ Version 4 — now with an agentic AI Companion
+          </span>
+          <h1 style={{ fontSize: 56, margin: "16px 0 12px", letterSpacing: "-2px" }}>
+            <span className="cn-grad-text">ConnectNext</span>
+          </h1>
+          <h2 style={{ fontWeight: 400, color: "var(--text-dim)", fontSize: 22, margin: "0 0 8px" }}>
+            Connect. Chat. Collaborate — with an AI that actually knows your chats.
+          </h2>
+          <p style={{ color: "var(--text-faint)", maxWidth: 540, margin: "16px auto 32px" }}>
+            A real-time chat app built for learning: React + TypeScript on the front,
+            Node + Socket.IO + PostgreSQL on the back, and Claude woven through it.
+          </p>
+          <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
+            <button onClick={() => navigate("/register")} style={{ padding: "13px 32px", fontSize: 15 }}>
+              Get Started
+            </button>
+            <button
+              onClick={() => navigate("/login")}
+              style={{ padding: "13px 32px", fontSize: 15, background: "transparent", border: "2px solid var(--brand)" }}
+            >
+              Sign In
+            </button>
+          </div>
+        </div>
 
-        {/* Tagline */}
-        <h2
-          style={{
-            fontSize: "28px",
-            marginBottom: "20px",
-            fontWeight: "300",
-            color: "#cbd5e1",
-          }}
-        >
-          Connect. Chat. Collaborate.
-        </h2>
-
-        {/* Description */}
-        <p
-          style={{
-            fontSize: "18px",
-            maxWidth: "500px",
-            lineHeight: "1.6",
-            color: "#94a3b8",
-            marginBottom: "40px",
-          }}
-        >
-          Join our vibrant community and connect with people around the world.
-          Share ideas, chat in real-time, and build meaningful connections.
-        </p>
-
-        {/* CTA Buttons */}
         <div
           style={{
-            display: "flex",
-            gap: "20px",
-            justifyContent: "center",
-            flexWrap: "wrap",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gap: 16,
+            textAlign: "left",
           }}
         >
-          {/* Login Button */}
-          <button
-            onClick={() => navigate("/login")}
-            style={{
-              padding: "14px 40px",
-              fontSize: "16px",
-              fontWeight: "bold",
-              background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
-              border: "none",
-              borderRadius: "8px",
-              color: "white",
-              cursor: "pointer",
-              transition: "transform 0.2s, box-shadow 0.2s",
-            }}
-            onMouseOver={(e) => {
-              const target = e.currentTarget as HTMLButtonElement;
-              target.style.transform = "translateY(-2px)";
-              target.style.boxShadow = "0 10px 20px rgba(59, 130, 246, 0.3)";
-            }}
-            onMouseOut={(e) => {
-              const target = e.currentTarget as HTMLButtonElement;
-              target.style.transform = "translateY(0)";
-              target.style.boxShadow = "none";
-            }}
-          >
-            Sign In
-          </button>
-
-          {/* Register Button */}
-          <button
-            onClick={() => navigate("/register")}
-            style={{
-              padding: "14px 40px",
-              fontSize: "16px",
-              fontWeight: "bold",
-              background: "transparent",
-              border: "2px solid #3b82f6",
-              borderRadius: "8px",
-              color: "#3b82f6",
-              cursor: "pointer",
-              transition: "all 0.2s",
-            }}
-            onMouseOver={(e) => {
-              const target = e.currentTarget as HTMLButtonElement;
-              target.style.background = "#3b82f6";
-              target.style.color = "white";
-              target.style.transform = "translateY(-2px)";
-              target.style.boxShadow = "0 10px 20px rgba(59, 130, 246, 0.3)";
-            }}
-            onMouseOut={(e) => {
-              const target = e.currentTarget as HTMLButtonElement;
-              target.style.background = "transparent";
-              target.style.color = "#3b82f6";
-              target.style.transform = "translateY(0)";
-              target.style.boxShadow = "none";
-            }}
-          >
-            Sign Up
-          </button>
+          {FEATURES.map((f) => (
+            <div key={f.title} className="cn-card">
+              <div style={{ fontSize: 28, marginBottom: 8 }}>{f.icon}</div>
+              <h3 style={{ margin: "0 0 6px", fontSize: 16 }}>{f.title}</h3>
+              <p style={{ margin: 0, color: "var(--text-dim)", fontSize: 13 }}>{f.text}</p>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Footer with Copyright */}
-      <footer
-        style={{
-          padding: "20px",
-          textAlign: "center",
-          borderTop: "1px solid #334155",
-          color: "#64748b",
-          fontSize: "14px",
-        }}
-      >
-        © 2026 Made by Brett Cooper
-      </footer>
+      <footer className="cn-footer">© 2026 Made by Brett Cooper</footer>
     </div>
   );
 }
