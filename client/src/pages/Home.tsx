@@ -1,9 +1,21 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../api/axios";
 
 // Home Component - Landing Page
 export default function Home() {
   // Navigation Hook
   const navigate = useNavigate();
+
+  // If already logged in, skip the landing page
+  useEffect(() => {
+    api
+      .get("/auth/me")
+      .then(() => navigate("/dashboard"))
+      .catch(() => {
+        // not logged in - stay on the landing page
+      });
+  }, [navigate]);
 
   // UI Rendering
   return (
@@ -81,7 +93,7 @@ export default function Home() {
         >
           {/* Login Button */}
           <button
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/login")}
             style={{
               padding: "14px 40px",
               fontSize: "16px",

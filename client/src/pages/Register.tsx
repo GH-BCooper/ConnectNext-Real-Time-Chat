@@ -189,7 +189,7 @@ export default function Register() {
           <p style={{ textAlign: "center" }}>
             Already have an account?{" "}
             <button
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/login")}
               style={{
                 background: "none",
                 border: "none",

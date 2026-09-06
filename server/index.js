@@ -10,6 +10,7 @@ import authRoutes from "./routes/authRoutes.js";
 import roomRoutes from "./routes/roomRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 import { getAIReply, AI_BOT_USERNAME } from "./lib/ai.js";
 
 // Environment Variable Configuration
@@ -73,6 +74,7 @@ app.use("/auth", authRoutes);
 app.use("/rooms", roomRoutes);
 app.use("/messages", messageRoutes);
 app.use("/ai", aiRoutes);
+app.use("/users", userRoutes);
 
 // Root Route
 app.get("/", (req, res) => {
@@ -257,6 +259,7 @@ io.on("connection", (socket) => {
 });
 
 // Server Startup
-server.listen(process.env.PORT, () => {
-  console.log(`Server running on http://localhost:${process.env.PORT}`);
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });

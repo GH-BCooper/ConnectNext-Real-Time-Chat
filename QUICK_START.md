@@ -3,16 +3,11 @@
 ## 1. Setup Database (One-time)
 
 ```bash
-# Connect to PostgreSQL
-psql -U postgres
+# Create the database
+psql -U postgres -c "CREATE DATABASE connectnext;"
 
-# In psql:
-CREATE DATABASE connectnext;
-\q
-
-# Setup schema
-cd server
-psql -U postgres -d connectnext -f schema.sql
+# Load / update the schema (safe to re-run on an existing DB)
+psql -U postgres -d connectnext -f server/schema.sql
 ```
 
 ## 2. Install Dependencies
@@ -45,15 +40,16 @@ npm run dev
 
 ## 4. Test
 
-Open http://localhost:5173 in your browser and register!
+Open http://localhost:5173, register, create a room, and chat. Try `/ai hello`
+inside a room, and the **✨ Summarize** / **💡 Icebreakers** / **✨ Polish**
+buttons (these need `ANTHROPIC_API_KEY` set in `server/.env`).
 
 ---
 
-**Already Done For You:**
+**Already done for you:**
 
 - ✅ server/.env configured for local PostgreSQL
 - ✅ client/.env configured to point to localhost:5000
-- ✅ server/schema.sql created with database tables
-- ✅ Code bugs fixed
+- ✅ server/schema.sql — safe to re-run, auto-migrates older databases
 
-Just follow the 4 steps above!
+Add `ANTHROPIC_API_KEY` to `server/.env` for the AI features (optional).
