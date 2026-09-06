@@ -2,10 +2,10 @@ import { NavLink, useNavigate } from "react-router-dom";
 import api from "../api/axios";
 
 const links = [
-  { to: "/dashboard", label: "Rooms", icon: "💬" },
-  { to: "/explore", label: "Explore", icon: "🧭" },
-  { to: "/assistant", label: "Companion", icon: "🤖" },
-  { to: "/profile", label: "Profile", icon: "👤" },
+  { to: "/dashboard", label: "Study Rooms", icon: "📚" },
+  { to: "/explore", label: "Search", icon: "🔍" },
+  { to: "/assistant", label: "AI Tutor", icon: "🧑‍🏫" },
+  { to: "/profile", label: "Progress", icon: "📈" },
 ];
 
 export default function NavBar({ username }: { username?: string }) {

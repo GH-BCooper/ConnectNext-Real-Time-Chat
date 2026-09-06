@@ -1,10 +1,14 @@
-# ConnectNext 🚀
+# ConnectNext 📚
 
-A real-time chat app built with **React + TypeScript** (client) and **Node.js + Express + Socket.IO + PostgreSQL** (server). Users register, create/join rooms, chat in real time, see who's online, and use a built-in **Claude AI assistant**.
+**Real-time study rooms with a built-in AI tutor.** Make a room for whatever
+you're revising, study out loud with other people, then turn the session into an
+interactive **quiz** and a set of **revision notes**. Built with **React +
+TypeScript** (client) and **Node.js + Express + Socket.IO + PostgreSQL** (server),
+with **Claude** woven through it.
 
 Built as a learning project. **© 2026 Made by Brett Cooper**
 
-Version history: [versionTwo.md](versionTwo.md) · [versionThree.md](versionThree.md) · [versionFour.md](versionFour.md)
+Version history: [v2](versionTwo.md) · [v3](versionThree.md) · [v4](versionFour.md) · [**v5**](versionFive.md)
 
 ---
 
@@ -70,11 +74,11 @@ Without `ANTHROPIC_API_KEY` the app works normally; AI buttons just show a frien
 | `/`               | Home       | Landing page                   |
 | `/login`          | Login      | Redirects to dashboard if in   |
 | `/register`       | Register   |                                |
-| `/dashboard`      | Dashboard  | Room grid + create room (protected) |
-| `/chat?roomId=ID` | Room chat  | Real-time chat + Vibe Check (protected) |
-| `/explore`        | Explore    | Global message search (protected) |
-| `/assistant`      | AI Companion | Agentic multi-turn assistant (protected) |
-| `/profile`        | Profile    | Your info + stats (protected)  |
+| `/dashboard`      | Study Rooms | Room grid + create room (protected) |
+| `/chat?roomId=ID` | Study room | Real-time chat + Quiz Me / Notes / Discuss / Focus (protected) |
+| `/explore`        | Search     | Global message search (protected) |
+| `/assistant`      | AI Tutor   | Agentic multi-turn tutor with tool use (protected) |
+| `/profile`        | Progress   | Your info + stats (protected)  |
 | `*`               | 404        | Not found page                 |
 
 ---
@@ -94,11 +98,12 @@ Without `ANTHROPIC_API_KEY` the app works normally; AI buttons just show a frien
 | GET    | `/messages/search?q=`   | Global message search across all rooms (protected) |
 | GET    | `/health`               | Health check                        |
 | GET    | `/ai/status`            | Whether AI is enabled + which model |
-| GET    | `/ai/summarize/:roomId` | AI summary of recent messages (protected) |
-| GET    | `/ai/icebreakers/:roomId` | AI conversation starters (protected) |
-| GET    | `/ai/vibe/:roomId`      | AI mood/energy read of a room (protected) |
+| GET    | `/ai/summarize/:roomId` | AI revision notes from a session (protected) |
+| GET    | `/ai/icebreakers/:roomId` | AI discussion prompts (protected) |
+| GET    | `/ai/quiz/:roomId`      | AI recall quiz from a session — JSON questions (protected) |
+| GET    | `/ai/vibe/:roomId`      | AI focus/energy read of a session (protected) |
 | POST   | `/ai/polish`            | AI rewrite of a draft message (protected) |
-| POST   | `/ai/companion`         | Agentic multi-turn AI assistant with tool use (protected) |
+| POST   | `/ai/companion`         | Agentic multi-turn AI tutor with tool use (protected) |
 
 ---
 
@@ -107,7 +112,7 @@ Without `ANTHROPIC_API_KEY` the app works normally; AI buttons just show a frien
 **Client → server:** `joinRoom`, `leaveRoom`, `sendMessage`, `typing`
 **Server → client:** `receiveMessage`, `roomUsers`, `systemMessage`, `typing`, `aiTyping`
 
-`sendMessage` with a message starting `/ai ` or `@ai ` triggers the AI assistant, which replies into the room for everyone.
+`sendMessage` with a message starting `/ai ` or `@ai ` pings the AI tutor, which replies into the room for everyone.
 
 ---
 
@@ -116,13 +121,13 @@ Without `ANTHROPIC_API_KEY` the app works normally; AI buttons just show a frien
 ```
 client/src/
   api/axios.ts          socket/socket.ts
-  lib/useAuth.ts        components/NavBar.tsx
+  lib/useAuth.ts        components/NavBar.tsx  components/QuizModal.tsx
   styles/global.css     (design system)
   pages/  Home  Login  Register  Dashboard  RoomChat  Explore  Assistant  Profile  NotFound
 server/
   index.js              db.js              schema.sql
   routes/  authRoutes  roomRoutes  messageRoutes  userRoutes  aiRoutes
-  middleware/auth.js    lib/ai.js  (runClaude, runCompanion agent loop)
+  middleware/auth.js    lib/ai.js  (runClaude, getQuiz, runCompanion agent loop)
 ```
 
 ---

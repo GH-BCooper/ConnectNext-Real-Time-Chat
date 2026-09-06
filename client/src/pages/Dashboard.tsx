@@ -64,8 +64,8 @@ export default function Dashboard() {
           Welcome back, <span className="cn-grad-text">{user?.username}</span> 🚀
         </h1>
         <p style={{ margin: "0 0 24px", color: "var(--text-dim)" }}>
-          Jump into a room, start a new one, or ask the{" "}
-          <a href="/assistant">AI Companion</a> what's going on.
+          Join a study room, start one for what you're revising, or ask the{" "}
+          <a href="/assistant">AI Tutor</a> what your group has been covering.
         </p>
 
         <div
@@ -79,7 +79,7 @@ export default function Dashboard() {
           {/* Rooms grid */}
           <div>
             <h2 style={{ fontSize: 18, margin: "0 0 12px" }}>
-              Rooms <span style={{ color: "var(--text-faint)" }}>({rooms.length})</span>
+              Study rooms <span style={{ color: "var(--text-faint)" }}>({rooms.length})</span>
             </h2>
             <div
               style={{
@@ -124,20 +124,20 @@ export default function Dashboard() {
 
           {/* Create room */}
           <div className="cn-card">
-            <h2 style={{ fontSize: 16, margin: "0 0 12px" }}>✨ New Room</h2>
+            <h2 style={{ fontSize: 16, margin: "0 0 12px" }}>✨ New study room</h2>
             {createError && (
               <p style={{ color: "#fca5a5", fontSize: 12, margin: "0 0 8px" }}>
                 {createError}
               </p>
             )}
             <input
-              placeholder="Room name"
+              placeholder="What are you studying?"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               style={{ width: "100%", marginBottom: 8 }}
             />
             <input
-              placeholder="Description (optional)"
+              placeholder="Topic or goal (optional)"
               value={newDesc}
               onChange={(e) => setNewDesc(e.target.value)}
               style={{ width: "100%", marginBottom: 12 }}
@@ -147,7 +147,7 @@ export default function Dashboard() {
               disabled={creating}
               style={{ width: "100%", background: "var(--green)" }}
             >
-              {creating ? "Creating…" : "+ Create Room"}
+              {creating ? "Creating…" : "+ Create room"}
             </button>
           </div>
         </div>

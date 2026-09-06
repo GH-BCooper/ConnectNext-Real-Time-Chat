@@ -34,20 +34,20 @@ async function runClaude(system, user, maxTokens = 600) {
 }
 
 // ---------------------------------------------------------------------------
-// Feature 1 — short in-chat reply from the AI assistant (/ai or @ai)
+// Feature 1 — short in-room reply from the AI tutor (/ai or @ai)
 // ---------------------------------------------------------------------------
 export async function getAIReply(question) {
   const reply = await runClaude(
-    "You are ConnectNext AI, a friendly and concise chat-room assistant. " +
-      "Reply in 2-4 short sentences, like a helpful participant in a group chat. " +
-      "Use plain text, no markdown headings.",
+    "You are the ConnectNext AI tutor, sitting inside a real-time study room. " +
+      "Answer the group's question clearly and accurately in 2-4 short sentences, " +
+      "the way a good study partner would. Plain text, no markdown headings.",
     question,
   );
   return reply || "Sorry, I couldn't come up with a reply.";
 }
 
 // ---------------------------------------------------------------------------
-// Feature 2 — summarise a list of chat messages
+// Feature 2 — turn a study session into structured revision notes
 // ---------------------------------------------------------------------------
 export async function getConversationSummary(messages) {
   const transcript = messages
@@ -55,15 +55,16 @@ export async function getConversationSummary(messages) {
     .join("\n");
 
   const summary = await runClaude(
-    "You summarise group-chat conversations. Produce at most 5 short bullet points " +
-      "covering key topics, decisions and action items. Start each line with '- '.",
-    `Summarise this conversation:\n\n${transcript}`,
+    "You turn a group study session into revision notes. Produce at most 6 concise " +
+      "bullet points capturing the key concepts, definitions and takeaways worth " +
+      "remembering. Start each line with '- '. Skip small talk.",
+    `Study session transcript:\n\n${transcript}`,
   );
-  return summary || "Nothing to summarise yet.";
+  return summary || "Not enough studying yet to make notes.";
 }
 
 // ---------------------------------------------------------------------------
-// Feature 3 — conversation starters for a room
+// Feature 3 — discussion prompts to push the study session forward
 // ---------------------------------------------------------------------------
 export async function getIcebreakers(roomName, recentMessages) {
   const context = recentMessages.length
@@ -71,11 +72,59 @@ export async function getIcebreakers(roomName, recentMessages) {
     : "The room has no messages yet.";
 
   const text = await runClaude(
-    "You help kick off group-chat conversations. Suggest exactly 3 short, fun, " +
-      "open-ended questions the group could discuss. Return a plain numbered list, nothing else.",
-    `Room name: "${roomName}"\n${context}`,
+    "You help a study group go deeper. Suggest exactly 3 short, open-ended questions " +
+      "that would test understanding or open up the topic further. If the room is empty, " +
+      "base them on the room's subject. Return a plain numbered list, nothing else.",
+    `Study room: "${roomName}"\n${context}`,
   );
-  return text || "1. What's everyone working on today?";
+  return text || "1. What's the core idea here, in one sentence?";
+}
+
+// ---------------------------------------------------------------------------
+// Feature 3b (NEW in v5) — generate a quick recall quiz from the session
+// Returns { questions: [{ q, options[4], correct 0-3, why }] } (may be empty).
+// ---------------------------------------------------------------------------
+export async function getQuiz(roomName, messages) {
+  const studyText = messages
+    .map((m) => `${m.username}: ${m.content}`)
+    .join("\n");
+
+  if (studyText.trim().length < 80) {
+    return { questions: [], note: "Study a bit more first — there isn't enough here to quiz on yet." };
+  }
+
+  const raw = await runClaude(
+    "You write short recall quizzes from a study session. Respond with STRICT JSON only, " +
+      "no code fences, shaped exactly: " +
+      '{"questions": [{"q": string, "options": [string, string, string, string], ' +
+      '"correct": integer 0-3, "why": string (one sentence)}]}. ' +
+      "Write 3 to 5 questions, each testing a concept the group actually discussed. " +
+      "Exactly four options each, only one correct.",
+    `Study room "${roomName}" session:\n\n${studyText}`,
+    900,
+  );
+
+  try {
+    const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
+    const questions = (Array.isArray(parsed.questions) ? parsed.questions : [])
+      .filter(
+        (q) =>
+          q &&
+          typeof q.q === "string" &&
+          Array.isArray(q.options) &&
+          q.options.length === 4,
+      )
+      .slice(0, 5)
+      .map((q) => ({
+        q: String(q.q).slice(0, 300),
+        options: q.options.map((o) => String(o).slice(0, 200)),
+        correct: Math.min(3, Math.max(0, Number(q.correct) || 0)),
+        why: String(q.why || "").slice(0, 300),
+      }));
+    return { questions };
+  } catch {
+    return { questions: [], note: "Couldn't build a quiz this time — try again in a moment." };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -93,11 +142,11 @@ export async function getPolishedMessage(text) {
 }
 
 // ---------------------------------------------------------------------------
-// Feature 5 (NEW in v4) — room "vibe check": mood + energy read
+// Feature 5 — focus check: how the study session is going
 // ---------------------------------------------------------------------------
 export async function getRoomVibe(roomName, messages) {
   if (!messages.length) {
-    return { mood: "Quiet", emoji: "😴", energy: 1, note: "No messages yet — this room is waiting for its first hello." };
+    return { mood: "Quiet", emoji: "😴", energy: 1, note: "No messages yet — this room is waiting for its first question." };
   }
 
   const transcript = messages
@@ -105,10 +154,11 @@ export async function getRoomVibe(roomName, messages) {
     .join("\n");
 
   const raw = await runClaude(
-    "You analyse the mood of a group chat. Respond with STRICT JSON only, no code fences, " +
-      'shaped exactly: {"mood": string (one or two words), "emoji": string (single emoji), ' +
-      '"energy": integer 1-5, "note": string (one friendly sentence, max 20 words)}.',
-    `Room "${roomName}" recent messages:\n\n${transcript}`,
+    "You read how a group study session is going. Respond with STRICT JSON only, no code fences, " +
+      'shaped exactly: {"mood": string (one or two words, e.g. "Locked in" / "Drifting" / "Confused"), ' +
+      '"emoji": string (single emoji), "energy": integer 1-5 (focus level), ' +
+      '"note": string (one helpful sentence, max 20 words)}.',
+    `Study room "${roomName}" recent messages:\n\n${transcript}`,
     300,
   );
 
@@ -134,10 +184,11 @@ export async function getRoomVibe(roomName, messages) {
 // Returns { reply, toolsUsed: string[] }.
 export async function runCompanion(history, tools, runTool) {
   const system =
-    "You are the ConnectNext Companion — a helpful, upbeat assistant living inside a " +
-    "real-time chat app. You can look things up with the provided tools (rooms, messages, " +
-    "the user's own stats) before answering. Keep answers friendly and reasonably short. " +
-    "Use plain text with the occasional emoji. If a tool returns nothing useful, say so honestly.";
+    "You are the ConnectNext AI Tutor — a patient, encouraging study assistant living inside a " +
+    "real-time study-rooms app. You can look things up with the provided tools (study rooms, " +
+    "session messages, the user's own progress) before answering. Explain things clearly, " +
+    "quiz the user when it helps, and keep answers reasonably short. Use plain text with the " +
+    "occasional emoji. If a tool returns nothing useful, say so honestly.";
 
   const messages = history.slice(-12).map((m) => ({
     role: m.role === "assistant" ? "assistant" : "user",

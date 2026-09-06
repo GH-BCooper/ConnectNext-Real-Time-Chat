@@ -3,12 +3,18 @@ import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
 
 const FEATURES = [
-  { icon: "💬", title: "Real-time rooms", text: "Create rooms, chat live, see who's online and who's typing." },
-  { icon: "🤖", title: "AI Companion", text: "A multi-turn assistant that searches your rooms, messages and stats to answer." },
-  { icon: "🎭", title: "Vibe Check", text: "Ask the AI to read a room's mood and energy in one tap." },
-  { icon: "✨", title: "Summarize & Polish", text: "Digest long threads, and rewrite your draft before you hit send." },
-  { icon: "💡", title: "Icebreakers", text: "Stuck? Claude suggests conversation starters based on the room." },
-  { icon: "🧭", title: "Explore", text: "Search every message across every room from one page." },
+  { icon: "📚", title: "Live study rooms", text: "Make a room for any subject, study together in real time, see who's online." },
+  { icon: "❓", title: "Quiz Me", text: "One tap turns what your group just discussed into a multiple-choice recall quiz." },
+  { icon: "📝", title: "Revision notes", text: "Claude condenses a whole session into the points that are actually worth remembering." },
+  { icon: "🧑‍🏫", title: "AI Tutor", text: "A multi-turn tutor that searches your rooms, sessions and progress before it answers." },
+  { icon: "🎯", title: "Focus check", text: "Ask the AI whether the room is locked in or drifting — and what to do about it." },
+  { icon: "💡", title: "Discussion prompts", text: "Stuck? Get three questions that push the group's understanding further." },
+];
+
+const STEPS = [
+  { n: "1", t: "Make a room", d: "Name it after what you're studying — “Organic Chemistry”, “System Design”, “Spanish B2”." },
+  { n: "2", t: "Study out loud", d: "Explain things to each other in chat. Ping the tutor with /ai when you're stuck." },
+  { n: "3", t: "Test it stuck", d: "Hit Quiz Me, score yourselves, then grab the revision notes for later." },
 ];
 
 export default function Home() {
@@ -23,21 +29,22 @@ export default function Home() {
       <div className="cn-container" style={{ textAlign: "center" }}>
         <div style={{ padding: "60px 0 40px" }}>
           <span className="cn-pill" style={{ marginBottom: 20 }}>
-            ⚡ Version 4 — now with an agentic AI Companion
+            ⚡ Version 5 — study rooms with a built-in AI tutor
           </span>
           <h1 style={{ fontSize: 56, margin: "16px 0 12px", letterSpacing: "-2px" }}>
             <span className="cn-grad-text">ConnectNext</span>
           </h1>
           <h2 style={{ fontWeight: 400, color: "var(--text-dim)", fontSize: 22, margin: "0 0 8px" }}>
-            Connect. Chat. Collaborate — with an AI that actually knows your chats.
+            Study together in real time — and prove it stuck.
           </h2>
-          <p style={{ color: "var(--text-faint)", maxWidth: 540, margin: "16px auto 32px" }}>
-            A real-time chat app built for learning: React + TypeScript on the front,
-            Node + Socket.IO + PostgreSQL on the back, and Claude woven through it.
+          <p style={{ color: "var(--text-faint)", maxWidth: 560, margin: "16px auto 32px" }}>
+            Group study rooms where you learn out loud, then turn the session into a
+            quiz and a set of revision notes. Built with React, Node, Socket.IO and
+            Claude — as a project to learn from.
           </p>
           <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
             <button onClick={() => navigate("/register")} style={{ padding: "13px 32px", fontSize: 15 }}>
-              Get Started
+              Start studying
             </button>
             <button
               onClick={() => navigate("/login")}
@@ -63,6 +70,33 @@ export default function Home() {
               <p style={{ margin: 0, color: "var(--text-dim)", fontSize: 13 }}>{f.text}</p>
             </div>
           ))}
+        </div>
+
+        <div style={{ margin: "48px 0 8px" }}>
+          <h2 style={{ fontSize: 22, margin: "0 0 20px" }}>
+            How a <span className="cn-grad-text">session</span> works
+          </h2>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: 16,
+              textAlign: "left",
+            }}
+          >
+            {STEPS.map((s) => (
+              <div key={s.n} className="cn-card">
+                <div
+                  className="cn-grad-text"
+                  style={{ fontSize: 34, fontWeight: 800, marginBottom: 6 }}
+                >
+                  {s.n}
+                </div>
+                <h3 style={{ margin: "0 0 6px", fontSize: 15 }}>{s.t}</h3>
+                <p style={{ margin: 0, color: "var(--text-dim)", fontSize: 13 }}>{s.d}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 

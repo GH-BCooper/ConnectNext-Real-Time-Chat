@@ -10,14 +10,14 @@ interface ChatMsg {
 }
 
 const SUGGESTIONS = [
-  "Which room is the most active?",
-  "Summarise what people have been talking about",
-  "What are my stats?",
-  "Find messages that mention 'deploy'",
+  "Which study room has been the most active?",
+  "Summarise what we've covered so far",
+  "Quiz me on my most recent session",
+  "How many messages have I sent?",
 ];
 
-// NEW in v4 — the AI Companion: a multi-turn assistant that can actually
-// look through your rooms, messages and stats with tool use.
+// The AI Tutor: a multi-turn assistant that looks through your study rooms,
+// sessions and progress with tool use before answering.
 export default function Assistant() {
   const { user, loading } = useAuth();
   const [messages, setMessages] = useState<ChatMsg[]>([]);
@@ -57,7 +57,7 @@ export default function Assistant() {
     } catch (err: any) {
       const msg =
         err.response?.data?.message ||
-        "The Companion is unavailable right now.";
+        "The tutor is unavailable right now.";
       setMessages([...next, { role: "assistant", content: msg }]);
     } finally {
       setThinking(false);
@@ -82,11 +82,11 @@ export default function Assistant() {
       >
         <div style={{ marginBottom: 16 }}>
           <h1 style={{ margin: "0 0 6px", fontSize: 28 }}>
-            <span className="cn-grad-text">AI Companion</span> 🤖
+            <span className="cn-grad-text">AI Tutor</span> 🧑‍🏫
           </h1>
           <p style={{ margin: 0, color: "var(--text-dim)", fontSize: 14 }}>
-            Ask about your rooms, messages or stats — the Companion searches your
-            data before answering, and remembers this conversation.
+            Ask about your study rooms, sessions or progress — the tutor searches
+            your data before answering, and remembers this conversation.
           </p>
         </div>
 
@@ -168,7 +168,7 @@ export default function Assistant() {
 
           {thinking && (
             <div style={{ alignSelf: "flex-start", color: "var(--brand-2)", fontSize: 13 }}>
-              Companion is thinking…
+              Tutor is thinking…
             </div>
           )}
           <div ref={bottomRef} />
@@ -180,7 +180,7 @@ export default function Assistant() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send(input)}
-            placeholder="Ask the Companion anything about ConnectNext…"
+            placeholder="Ask the tutor anything about your studying…"
             disabled={aiOff || thinking}
           />
           <button onClick={() => send(input)} disabled={aiOff || thinking || !input.trim()}>

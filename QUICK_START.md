@@ -40,10 +40,18 @@ npm run dev
 
 ## 4. Test
 
-Open http://localhost:5173, register, create a room, and chat. Try `/ai hello`
-inside a room, the **✨ Summarize** / **💡 Icebreakers** / **🎭 Vibe** / **✨ Polish**
-buttons, the **🧭 Explore** search page, and the **🤖 AI Companion** at `/assistant`
-(the AI features need `ANTHROPIC_API_KEY` set in `server/.env`).
+Open http://localhost:5173, register, and make a study room (name it after what
+you're revising). Study out loud with someone, then try:
+
+- **❓ Quiz Me** — turns the session into an interactive multiple-choice quiz
+- **📝 Notes** — condenses it into revision notes
+- **💡 Discuss** — three questions to go deeper
+- **🎯 Focus** — an AI read of how the session is going
+- **✨ Polish** — rewrites your draft message
+- `/ai <question>` in the room — pings the AI tutor for everyone
+- **🔍 Search** across every room, and the **🧑‍🏫 AI Tutor** at `/assistant`
+
+The AI features need `ANTHROPIC_API_KEY` set in `server/.env`.
 
 ---
 

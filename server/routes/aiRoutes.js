@@ -7,6 +7,7 @@ import {
   getConversationSummary,
   getIcebreakers,
   getPolishedMessage,
+  getQuiz,
   getRoomVibe,
   runCompanion,
 } from "../lib/ai.js";
@@ -98,7 +99,35 @@ router.post("/polish", checkAuth, async (req, res) => {
   }
 });
 
-// NEW (v4) — room vibe / mood check
+// NEW (v5) — generate a recall quiz from a study session
+router.get("/quiz/:roomId", checkAuth, async (req, res) => {
+  if (!requireAI(res)) return;
+  try {
+    const room = await pool.query("SELECT name FROM rooms WHERE id = $1", [
+      req.params.roomId,
+    ]);
+    if (room.rows.length === 0) {
+      return res.status(404).json({ message: "Room not found" });
+    }
+
+    const recent = await pool.query(
+      `SELECT m.content, u.username
+       FROM messages m JOIN users u ON m.user_id = u.id
+       WHERE m.room_id = $1
+       ORDER BY m.created_at DESC
+       LIMIT 60`,
+      [req.params.roomId],
+    );
+
+    const quiz = await getQuiz(room.rows[0].name, recent.rows.reverse());
+    res.json(quiz);
+  } catch (error) {
+    console.error("Error building quiz:", error);
+    res.status(500).json({ message: "Error building the quiz" });
+  }
+});
+
+// Focus check — how the study session is going
 router.get("/vibe/:roomId", checkAuth, async (req, res) => {
   if (!requireAI(res)) return;
   try {
@@ -126,12 +155,12 @@ router.get("/vibe/:roomId", checkAuth, async (req, res) => {
   }
 });
 
-// NEW (v4) — agentic AI Companion: multi-turn chat that can query your data
+// AI Tutor: multi-turn chat that can query the user's study data
 const companionTools = [
   {
     name: "search_messages",
     description:
-      "Full-text search across all chat messages the user can see. Returns up to 12 matches with room name, author and text.",
+      "Full-text search across every study-room message the user can see. Returns up to 12 matches with room name, author and text.",
     input_schema: {
       type: "object",
       properties: { query: { type: "string", description: "Words to search for" } },
@@ -140,13 +169,13 @@ const companionTools = [
   },
   {
     name: "list_rooms",
-    description: "List every chat room with its description and message count.",
+    description: "List every study room with its subject and message count.",
     input_schema: { type: "object", properties: {} },
   },
   {
     name: "my_stats",
     description:
-      "Get the current user's own stats: username, join date, messages sent, rooms created.",
+      "Get the current user's own study progress: username, join date, messages sent, rooms created.",
     input_schema: { type: "object", properties: {} },
   },
 ];

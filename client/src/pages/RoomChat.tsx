@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import socket from "../socket/socket";
 import { useAuth } from "../lib/useAuth";
 import api from "../api/axios";
+import QuizModal, { type QuizQuestion } from "../components/QuizModal";
 
 export default function RoomChat() {
   const navigate = useNavigate();
@@ -21,7 +22,8 @@ export default function RoomChat() {
   const [polishing, setPolishing] = useState(false);
 
   const [modal, setModal] = useState<{ title: string; body: string } | null>(null);
-  const [busy, setBusy] = useState<"" | "summary" | "icebreakers" | "vibe">("");
+  const [busy, setBusy] = useState<"" | "summary" | "icebreakers" | "vibe" | "quiz">("");
+  const [quiz, setQuiz] = useState<QuizQuestion[] | null>(null);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -113,16 +115,39 @@ export default function RoomChat() {
   };
 
   const summarize = () =>
-    runAI("summary", `/ai/summarize/${roomId}`, "✨ Conversation Summary", (d) => d.summary);
+    runAI("summary", `/ai/summarize/${roomId}`, "📝 Revision Notes", (d) => d.summary);
   const icebreakers = () =>
-    runAI("icebreakers", `/ai/icebreakers/${roomId}`, "💡 Conversation Starters", (d) => d.ideas);
+    runAI("icebreakers", `/ai/icebreakers/${roomId}`, "💡 Discussion Prompts", (d) => d.ideas);
+
+  const quizMe = async () => {
+    if (!roomId) return;
+    setBusy("quiz");
+    try {
+      const res = await api.get(`/ai/quiz/${roomId}`);
+      if (res.data.questions?.length) {
+        setQuiz(res.data.questions);
+      } else {
+        setModal({
+          title: "❓ Quiz Me",
+          body: res.data.note || "Not enough discussion to build a quiz yet.",
+        });
+      }
+    } catch (err: any) {
+      setModal({
+        title: "❓ Quiz Me",
+        body: err.response?.data?.message || "Something went wrong. Try again.",
+      });
+    } finally {
+      setBusy("");
+    }
+  };
   const vibeCheck = () =>
     runAI(
       "vibe",
       `/ai/vibe/${roomId}`,
       "🎭 Room Vibe Check",
       (d) =>
-        `${d.emoji}  ${d.mood}\n\nEnergy: ${"🔥".repeat(d.energy)}${"·".repeat(5 - d.energy)}\n\n${d.note}`,
+        `${d.emoji}  ${d.mood}\n\nFocus: ${"🔥".repeat(d.energy)}${"·".repeat(5 - d.energy)}\n\n${d.note}`,
     );
 
   const polish = async () => {
@@ -166,22 +191,27 @@ export default function RoomChat() {
           gap: 10,
         }}
       >
-        <h2 style={{ margin: 0, fontSize: 18 }}># {roomName || "Chat Room"}</h2>
+        <h2 style={{ margin: 0, fontSize: 18 }}># {roomName || "Study Room"}</h2>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button onClick={icebreakers} disabled={busy !== ""} style={{ background: "var(--cyan)" }}>
-            {busy === "icebreakers" ? "Thinking…" : "💡 Icebreakers"}
-          </button>
-          <button onClick={vibeCheck} disabled={busy !== ""} style={{ background: "var(--pink)" }}>
-            {busy === "vibe" ? "Reading…" : "🎭 Vibe"}
+          <button onClick={quizMe} disabled={busy !== ""} style={{ background: "var(--cyan)" }}>
+            {busy === "quiz" ? "Building…" : "❓ Quiz Me"}
           </button>
           <button onClick={summarize} disabled={busy !== ""} style={{ background: "var(--brand-2)" }}>
-            {busy === "summary" ? "Summarising…" : "✨ Summarize"}
+            {busy === "summary" ? "Writing…" : "📝 Notes"}
+          </button>
+          <button onClick={icebreakers} disabled={busy !== ""} style={{ background: "var(--green)" }}>
+            {busy === "icebreakers" ? "Thinking…" : "💡 Discuss"}
+          </button>
+          <button onClick={vibeCheck} disabled={busy !== ""} style={{ background: "var(--pink)" }}>
+            {busy === "vibe" ? "Reading…" : "🎯 Focus"}
           </button>
           <button onClick={exitRoom} style={{ background: "var(--red)" }}>
             Exit
           </button>
         </div>
       </div>
+
+      {quiz && <QuizModal questions={quiz} onClose={() => setQuiz(null)} />}
 
       {modal && (
         <div style={overlay} onClick={() => setModal(null)}>
@@ -281,7 +311,7 @@ export default function RoomChat() {
                 if (user?.username) socket.emit("typing", { roomId, username: user.username });
               }}
               onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-              placeholder="Type a message… (try /ai <question>)"
+              placeholder="Ask the group something… (try /ai <question> for the tutor)"
             />
             <button
               onClick={polish}

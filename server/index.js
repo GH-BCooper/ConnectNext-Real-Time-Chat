@@ -198,6 +198,12 @@ io.on("connection", (socket) => {
 
       const userId = userResult.rows[0]?.id;
 
+      // Ignore messages from an unknown user (user_id is NOT NULL in the DB)
+      if (!userId) {
+        console.warn("sendMessage from unknown user:", username);
+        return;
+      }
+
       // Store Message In Database
       await pool.query(
         "INSERT INTO messages (room_id, user_id, content) VALUES ($1, $2, $3)",

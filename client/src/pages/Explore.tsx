@@ -52,10 +52,10 @@ export default function Explore() {
 
       <div className="cn-container" style={{ maxWidth: 760 }}>
         <h1 style={{ margin: "0 0 6px", fontSize: 28 }}>
-          <span className="cn-grad-text">Explore</span> 🧭
+          <span className="cn-grad-text">Search</span> 🔍
         </h1>
         <p style={{ margin: "0 0 18px", color: "var(--text-dim)", fontSize: 14 }}>
-          Search every message across every room.
+          Find anything you've covered — across every study room and session.
         </p>
 
         <input
