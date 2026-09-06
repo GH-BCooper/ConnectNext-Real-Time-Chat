@@ -9,6 +9,8 @@ import pgSession from "connect-pg-simple";
 import authRoutes from "./routes/authRoutes.js";
 import roomRoutes from "./routes/roomRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
+import aiRoutes from "./routes/aiRoutes.js";
+import { getAIReply, AI_BOT_USERNAME } from "./lib/ai.js";
 
 // Environment Variable Configuration
 dotenv.config();
@@ -49,11 +51,12 @@ app.use(
   }),
 );
 
-// TO:
+// Persist Sessions In PostgreSQL (survives server restarts)
 const PgStore = pgSession(session);
 
 app.use(
   session({
+    store: new PgStore({ pool, createTableIfMissing: true }),
     secret: process.env.SESSION_SECRET || "dev-secret-key",
     resave: false,
     saveUninitialized: false,
@@ -69,6 +72,7 @@ app.use(
 app.use("/auth", authRoutes);
 app.use("/rooms", roomRoutes);
 app.use("/messages", messageRoutes);
+app.use("/ai", aiRoutes);
 
 // Root Route
 app.get("/", (req, res) => {
@@ -77,6 +81,51 @@ app.get("/", (req, res) => {
 
 // In-Memory Room User Store
 const roomUsers = {};
+
+// Ensure The AI Assistant Bot User Exists
+let aiUserId = null;
+async function ensureAIUser() {
+  const existing = await pool.query(
+    "SELECT id FROM users WHERE username=$1",
+    [AI_BOT_USERNAME],
+  );
+
+  if (existing.rows.length > 0) {
+    aiUserId = existing.rows[0].id;
+    return;
+  }
+
+  const created = await pool.query(
+    `INSERT INTO users (username, email, password_hash)
+     VALUES ($1, $2, $3)
+     RETURNING id`,
+    [AI_BOT_USERNAME, "ai-assistant@connectnext.local", "not-a-real-password"],
+  );
+
+  aiUserId = created.rows[0].id;
+}
+
+ensureAIUser().catch((err) =>
+  console.error("Failed to set up AI assistant user:", err),
+);
+
+// Remove A User From A Room And Notify Others
+function removeUserFromRoom(io, room, socketId, username) {
+  if (!room || !roomUsers[room]) return;
+
+  roomUsers[room] = roomUsers[room].filter((u) => u.socketId !== socketId);
+
+  // Notify Room About User Leaving
+  io.to(room).emit("systemMessage", {
+    message: `${username} left the room`,
+  });
+
+  // Broadcast Updated User List
+  io.to(room).emit(
+    "roomUsers",
+    roomUsers[room].map((u) => u.username),
+  );
+}
 
 // Socket.IO Connection Handling
 io.on("connection", (socket) => {
@@ -155,32 +204,52 @@ io.on("connection", (socket) => {
         username,
         time: new Date().toLocaleTimeString(),
       });
+
+      // AI Assistant Trigger (message starts with /ai or @ai)
+      const aiMatch = message.trim().match(/^(\/ai|@ai)\s+(.+)/i);
+      if (aiMatch && aiUserId) {
+        io.to(String(roomId)).emit("aiTyping", true);
+
+        try {
+          const reply = await getAIReply(aiMatch[2]);
+
+          await pool.query(
+            "INSERT INTO messages (room_id, user_id, content) VALUES ($1, $2, $3)",
+            [roomId, aiUserId, reply],
+          );
+
+          io.to(String(roomId)).emit("receiveMessage", {
+            roomId,
+            message: reply,
+            username: AI_BOT_USERNAME,
+            time: new Date().toLocaleTimeString(),
+          });
+        } catch (aiErr) {
+          console.error("Error getting AI reply:", aiErr);
+          io.to(String(roomId)).emit("systemMessage", {
+            message: "AI Assistant couldn't respond right now.",
+          });
+        } finally {
+          io.to(String(roomId)).emit("aiTyping", false);
+        }
+      }
     } catch (err) {
       // Error Handling
       console.error("Error sending message:", err);
     }
   });
 
+  // Leave Room Event Handler (explicit exit, e.g. "Exit Room" button)
+  socket.on("leaveRoom", ({ roomId, username }) => {
+    const room = String(roomId);
+    socket.leave(room);
+    removeUserFromRoom(io, room, socket.id, username);
+    socket.roomId = null;
+  });
+
   // Disconnect Event Handler
   socket.on("disconnect", () => {
-    const room = socket.roomId;
-    const username = socket.username;
-
-    // Remove User From Room
-    if (room && roomUsers[room]) {
-      roomUsers[room] = roomUsers[room].filter((u) => u.socketId !== socket.id);
-
-      // Notify Room About User Leaving
-      socket.to(room).emit("systemMessage", {
-        message: `${username} left the room`,
-      });
-
-      // Broadcast Updated User List
-      io.to(room).emit(
-        "roomUsers",
-        roomUsers[room].map((u) => u.username),
-      );
-    }
+    removeUserFromRoom(io, socket.roomId, socket.id, socket.username);
 
     // Disconnection Log
     console.log("User disconnected:", socket.id);

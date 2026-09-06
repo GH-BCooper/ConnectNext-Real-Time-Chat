@@ -20,6 +20,9 @@ export default function RoomChat() {
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [roomName, setRoomName] = useState("");
   const [loading, setLoading] = useState(true);
+  const [aiTyping, setAiTyping] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summarizing, setSummarizing] = useState(false);
 
   // Refs
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -94,11 +97,17 @@ export default function RoomChat() {
       setOnlineUsers(users);
     };
 
+    // AI Typing Handler
+    const handleAiTyping = (isTyping: boolean) => {
+      setAiTyping(isTyping);
+    };
+
     // Socket Event Listeners
     socket.on("receiveMessage", handleReceiveMessage);
     socket.on("typing", handleTyping);
     socket.on("systemMessage", handleSystem);
     socket.on("roomUsers", handleUsers);
+    socket.on("aiTyping", handleAiTyping);
 
     // Cleanup Socket Listeners
     return () => {
@@ -106,6 +115,7 @@ export default function RoomChat() {
       socket.off("typing", handleTyping);
       socket.off("systemMessage", handleSystem);
       socket.off("roomUsers", handleUsers);
+      socket.off("aiTyping", handleAiTyping);
     };
   }, [roomId, user]);
 
@@ -142,6 +152,24 @@ export default function RoomChat() {
   const exitRoom = () => {
     socket.emit("leaveRoom", { roomId, username: user?.username });
     navigate("/dashboard");
+  };
+
+  // AI Summarize Handler
+  const summarizeConversation = async () => {
+    if (!roomId) return;
+
+    setSummarizing(true);
+    setSummary(null);
+
+    try {
+      const res = await api.get(`/ai/summarize/${roomId}`);
+      setSummary(res.data.summary);
+    } catch (error) {
+      console.error("Error summarizing conversation:", error);
+      setSummary("Failed to generate summary. Please try again.");
+    } finally {
+      setSummarizing(false);
+    }
   };
 
   // Show loading state
@@ -185,21 +213,90 @@ export default function RoomChat() {
         }}
       >
         <h2 style={{ margin: 0 }}>{roomName || "Chat Room"}</h2>
-        <button
-          onClick={exitRoom}
-          style={{
-            padding: "8px 16px",
-            background: "#dc2626",
-            border: "none",
-            borderRadius: "6px",
-            color: "white",
-            cursor: "pointer",
-            fontWeight: "bold",
-          }}
-        >
-          Exit Room
-        </button>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button
+            onClick={summarizeConversation}
+            disabled={summarizing}
+            style={{
+              padding: "8px 16px",
+              background: "#7c3aed",
+              border: "none",
+              borderRadius: "6px",
+              color: "white",
+              cursor: summarizing ? "default" : "pointer",
+              fontWeight: "bold",
+              opacity: summarizing ? 0.7 : 1,
+            }}
+          >
+            {summarizing ? "Summarizing..." : "✨ Summarize"}
+          </button>
+          <button
+            onClick={exitRoom}
+            style={{
+              padding: "8px 16px",
+              background: "#dc2626",
+              border: "none",
+              borderRadius: "6px",
+              color: "white",
+              cursor: "pointer",
+              fontWeight: "bold",
+            }}
+          >
+            Exit Room
+          </button>
+        </div>
       </div>
+
+      {/* AI Summary Modal */}
+      {summary && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 100,
+          }}
+          onClick={() => setSummary(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#1e293b",
+              padding: "24px",
+              borderRadius: "10px",
+              maxWidth: "500px",
+              width: "90%",
+              maxHeight: "70vh",
+              overflowY: "auto",
+              border: "1px solid #7c3aed",
+            }}
+          >
+            <h3 style={{ marginTop: 0, color: "#a78bfa" }}>
+              ✨ Conversation Summary
+            </h3>
+            <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
+              {summary}
+            </div>
+            <button
+              onClick={() => setSummary(null)}
+              style={{
+                marginTop: "16px",
+                padding: "8px 16px",
+                background: "#334155",
+                border: "none",
+                borderRadius: "6px",
+                color: "white",
+                cursor: "pointer",
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Chat Area */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
@@ -225,6 +322,7 @@ export default function RoomChat() {
           >
             {messages.map((msg, i) => {
               const isMe = msg.username === user?.username;
+              const isAI = msg.username === "AI Assistant";
 
               return (
                 <div
@@ -241,14 +339,21 @@ export default function RoomChat() {
                       maxWidth: "60%",
                       padding: "10px",
                       borderRadius: "10px",
-                      background: isMe ? "#2563eb" : "#1e293b",
+                      background: isAI
+                        ? "#4c1d95"
+                        : isMe
+                          ? "#2563eb"
+                          : "#1e293b",
+                      border: isAI ? "1px solid #a78bfa" : "none",
                     }}
                   >
                     {/* Message Sender */}
                     <strong style={{ fontSize: "12px" }}>
-                      {msg.username === user?.username
-                        ? "You"
-                        : msg.username || "System"}
+                      {isAI
+                        ? "✨ AI Assistant"
+                        : msg.username === user?.username
+                          ? "You"
+                          : msg.username || "System"}
                     </strong>
 
                     {/* Message Content */}
@@ -264,6 +369,13 @@ export default function RoomChat() {
                 </div>
               );
             })}
+
+            {/* AI Typing Indicator */}
+            {aiTyping && (
+              <p style={{ fontSize: "12px", marginBottom: "10px", color: "#a78bfa" }}>
+                ✨ AI Assistant is thinking...
+              </p>
+            )}
 
             {/* Auto Scroll Reference */}
             <div ref={bottomRef}></div>
@@ -310,7 +422,7 @@ export default function RoomChat() {
                   sendMessage();
                 }
               }}
-              placeholder="Type a message..."
+              placeholder="Type a message... (try /ai <question>)"
             />
 
             {/* Send Message Button */}
