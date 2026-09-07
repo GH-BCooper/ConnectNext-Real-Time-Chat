@@ -85,6 +85,8 @@ Socket.IO layer (including the in-room `/ai` trigger).
 | `/`               | Home       | Landing page                   |
 | `/login`          | Login      | Redirects to dashboard if in   |
 | `/register`       | Register   |                                |
+| `/forgot-password` | Reset password | Request a reset link by email |
+| `/reset-password?token=…` | New password | Set a new password from a reset link |
 | `/dashboard`      | Study Rooms | Room grid + create room (protected) |
 | `/chat?roomId=ID` | Study room | Real-time chat + Quiz Me / Notes / Discuss / Focus (protected) |
 | `/explore`        | Search     | Global message search (protected) |
@@ -102,6 +104,8 @@ Socket.IO layer (including the in-room `/ai` trigger).
 | POST   | `/auth/login`           | Login                               |
 | POST   | `/auth/logout`          | Logout                              |
 | GET    | `/auth/me`              | Current user (protected)            |
+| POST   | `/auth/forgot-password` | Email a password reset link via Resend (falls back to returning the link in dev when `RESEND_API_KEY` is unset) |
+| POST   | `/auth/reset-password`  | Consume a token and set a new password (single-use, 1‑hour expiry) |
 | GET    | `/rooms`                | List rooms + message counts (protected) |
 | POST   | `/rooms`                | Create a room (protected)           |
 | GET    | `/messages/:roomId`     | Last 100 messages, oldest first (protected) |
