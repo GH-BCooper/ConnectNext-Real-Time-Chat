@@ -88,7 +88,11 @@ export default function Login() {
             {loading ? "Signing in…" : "Sign In"}
           </button>
 
-          <p style={{ textAlign: "center", marginTop: 16, fontSize: 13, color: "var(--text-dim)" }}>
+          <p style={{ textAlign: "center", marginTop: 14, fontSize: 13 }}>
+            <Link to="/forgot-password">Forgot password?</Link>
+          </p>
+
+          <p style={{ textAlign: "center", marginTop: 4, fontSize: 13, color: "var(--text-dim)" }}>
             New here? <Link to="/register">Create an account</Link>
           </p>
         </div>
