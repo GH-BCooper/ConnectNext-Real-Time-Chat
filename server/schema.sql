@@ -29,6 +29,18 @@ CREATE TABLE IF NOT EXISTS messages (
 
 CREATE INDEX IF NOT EXISTS idx_messages_room_time ON messages (room_id, created_at);
 
+-- Password Reset Tokens Table
+-- Stores a SHA-256 hash of the reset token (never the raw token) plus an expiry.
+CREATE TABLE IF NOT EXISTS password_resets (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash VARCHAR(64) NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_resets_token ON password_resets (token_hash);
+
 -- Migrations for existing databases (safe to re-run before the seed below)
 ALTER TABLE rooms ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE rooms ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
